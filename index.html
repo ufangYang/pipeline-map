@@ -4,66 +4,68 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Neuroimaging pipeline map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
 <style>
-  :root { --ink:#1c2430; --muted:#6b7280; --line:#e5e7eb; --path:#1f4e79; --leaf:#2f6f8f; --alt:#d9842b; --diff:#c0392b; --grey:#cfd4da; }
+  :root { --ink:#1b2230; --muted:#6b7482; --line:#e6e8ec; --bg:#fbfbfd; --card:#fff; --path:#1f4e79; --leaf:#2f6f8f; --alt:#d9842b; --diff:#c0392b; --grey:#cfd4da; }
   * { box-sizing:border-box; }
   html, body { margin:0; height:100%; } body { height:100vh; }
-  body { font-family:-apple-system,Segoe UI,Roboto,Helvetica,sans-serif; color:var(--ink); background:#fff; display:flex; flex-direction:column; }
-  header { display:flex; align-items:baseline; gap:18px; padding:14px 22px 10px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
-  header h1 { font-size:19px; margin:0; font-weight:600; }
-  header .sub { color:var(--muted); font-size:13px; margin:0; }
-  .mod { margin-left:auto; display:flex; gap:0; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
-  .mod button { border:none; background:#fff; padding:6px 14px; font-size:13px; cursor:pointer; color:var(--muted); }
+  body { font-family:Inter,-apple-system,Segoe UI,Roboto,Helvetica,sans-serif; font-size:15px; color:var(--ink); background:var(--bg); display:flex; flex-direction:column; -webkit-font-smoothing:antialiased; }
+  header { display:grid; grid-template-columns:1fr auto; column-gap:22px; row-gap:4px; align-items:center; padding:20px 28px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap; background:var(--card); }
+  header h1 { font-family:"Source Serif 4",Georgia,serif; font-size:26px; margin:0; font-weight:600; letter-spacing:-.01em; }
+  header .sub { color:var(--muted); font-size:14.5px; margin:0; }
+  .mod { grid-row:1/3; grid-column:2; display:flex; gap:0; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .mod button { border:none; background:#fff; padding:8px 18px; font-size:14px; font-weight:500; cursor:pointer; color:var(--muted); }
   .mod button.on { background:var(--path); color:#fff; }
-  main { flex:1; display:grid; grid-template-columns: 1fr 300px; min-height:0; }
+  main { flex:1; display:grid; grid-template-columns: 1fr 340px; min-height:0; }
   #stage { position:relative; min-width:0; min-height:0; overflow:hidden; }
   #stage svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
-  aside { border-left:1px solid var(--line); padding:14px 16px; overflow:auto; font-size:13px; }
-  aside h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:14px 0 6px; font-weight:600; }
+  aside { border-left:1px solid var(--line); padding:20px 22px; overflow:auto; font-size:14.5px; background:var(--card); }
+  aside h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:22px 0 8px; font-weight:600; }
   aside h2:first-child { margin-top:0; }
-  .count { font-size:28px; font-weight:600; color:var(--path); line-height:1; }
-  .count small { font-size:13px; color:var(--muted); font-weight:400; margin-left:4px; }
-  .btns { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-  button.b { padding:6px 10px; border:1px solid #cbd0d6; border-radius:5px; background:#fff; font-size:12.5px; cursor:pointer; }
+  .count { font-family:"Source Serif 4",Georgia,serif; font-size:40px; font-weight:600; color:var(--path); line-height:1; }
+  .count small { font-family:Inter,sans-serif; font-size:14px; color:var(--muted); font-weight:400; margin-left:6px; }
+  .btns { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  button.b { padding:8px 13px; border:1px solid #d4d8de; border-radius:8px; background:#fff; font-size:13.5px; font-weight:500; cursor:pointer; color:var(--ink); transition:background .15s; } button.b:hover { background:#f1f3f6; }
   button.b.primary { background:var(--path); color:#fff; border-color:var(--path); }
-  #msg { color:var(--muted); font-size:12px; min-height:16px; margin-top:6px; }
-  .path .st { margin:6px 0 2px; font-weight:600; font-size:12.5px; }
-  .path .d { display:flex; gap:8px; padding:1px 0; }
-  .path .d .k { color:var(--muted); min-width:110px; } .path .d .v { word-break:break-word; }
+  #msg { color:var(--muted); font-size:13px; min-height:18px; margin-top:8px; }
+  .path .st { margin:10px 0 3px; font-weight:600; font-size:14px; }
+  .path .d { display:flex; gap:10px; padding:2px 0; line-height:1.4; }
+  .path .d .k { color:var(--muted); min-width:130px; } .path .d .v { word-break:break-word; }
   .path .d .v { color:var(--c, var(--path)); }
   .path .st { color:var(--c); }
   .path .d .v.alt { color:var(--alt); }
   .path .d.diff .v { color:var(--diff); }
-  #note { border:1px solid var(--line); border-radius:6px; padding:10px 12px; background:#f8fafc; min-height:70px; }
-  #note b { display:block; margin-bottom:3px; }
-  #note .r { color:var(--muted); font-size:12px; margin-top:6px; }
-  footer { border-top:1px solid var(--line); padding:8px 22px; color:var(--muted); font-size:11.5px; }
+  #note { border:1px solid var(--line); border-radius:10px; padding:14px 16px; background:#f6f8fb; min-height:84px; line-height:1.45; }
+  #note b { display:block; margin-bottom:5px; font-size:15px; }
+  #note .r { color:var(--muted); font-size:12.5px; margin-top:8px; }
+  footer { border-top:1px solid var(--line); padding:12px 28px; color:var(--muted); font-size:12.5px; line-height:1.5; background:var(--card); }
   /* svg */
-  .lk { fill:none; stroke-width:1.2; opacity:.28; }
-  .lk.on { stroke-width:2.4; opacity:1; }
-  .lk.alt { stroke:var(--alt); stroke-width:2.2; stroke-dasharray:5 3; }
+  .lk { fill:none; stroke-width:1.6; opacity:.3; stroke-linecap:round; }
+  .lk.on { stroke-width:3.2; opacity:1; }
+  .lk.alt { stroke:var(--alt); stroke-width:3; stroke-dasharray:6 4; }
   .lk.alt, .lk.both { opacity:1; }
-  .lk.both { stroke-width:2.6; }
+  .lk.both { stroke-width:3.6; }
   .st { cursor:pointer; }
-  .st circle { stroke-width:1.8; }
-  .st .n { font-size:10px; font-weight:600; fill:var(--c); }
+  .st circle { stroke-width:2.2; }
+  .st .n { font-size:13px; font-weight:700; fill:var(--c); }
   .dc { cursor:pointer; }
-  .dc:not(.open) circle { stroke-width:2; }
-  .st text { font-size:12.5px; font-weight:600; fill:var(--ink); }
-  .dc circle { fill:#fff; stroke:#8a94a0; stroke-width:1.3; cursor:default; }
+  .dc:not(.open) circle { stroke-width:2.4; }
+  .st text { font-size:15px; font-weight:600; fill:var(--ink); letter-spacing:.01em; }
+  .dc circle { fill:#fff; stroke:#8a94a0; stroke-width:1.6; cursor:default; }
   .dc circle { stroke:var(--c); }
   .dc.on circle { fill:var(--c); }
   .dc.on text { font-weight:600; fill:var(--ink); }
-  .dc text { font-size:10.5px; fill:#3b4350; }
+  .dc text { font-size:13.5px; font-weight:500; fill:#2f3745; }
   .op { cursor:pointer; }
-  .op circle { fill:#fff; stroke:#b4bcc5; stroke-width:1.2; }
-  .op text { font-size:10px; fill:#5b6572; }
+  .op circle { fill:#fff; stroke:#b4bcc5; stroke-width:1.5; transition:r .12s; }
+  .op text { font-size:12.5px; fill:#4d5664; }
   .op:hover circle { stroke:var(--c); }
   .op.on circle { fill:var(--c); stroke:var(--c); }
   .op.on text { fill:var(--ink); font-weight:600; }
-  .op.alt circle { stroke:var(--alt); stroke-width:2.4; }
-  .op.diff circle { stroke:var(--diff); stroke-width:2.6; }
-  .ring { fill:none; stroke:#f0f2f4; stroke-width:1; }
+  .op.alt circle { stroke:var(--alt); stroke-width:3; }
+  .op.diff circle { stroke:var(--diff); stroke-width:3.2; }
+  .ring { fill:none; stroke:#e9ecf1; stroke-width:1; stroke-dasharray:2 4; }
   @media (max-width: 860px) { main { grid-template-columns:1fr; } aside { border-left:none; border-top:1px solid var(--line); } }
 </style>
 </head>
@@ -192,7 +194,7 @@ function key(s,d){ return s+"."+d; }
 function layout(){
   const V = VOCAB[mod];
   const weight = (si,d)=> openD.has(key(V[si][0],d[0])) ? d[2].length : 1;
-  const sLeaves = V.map((st,si)=> openS.has(si) ? st[2].reduce((b,d)=>b+weight(si,d),0) : 3);
+  const sLeaves = V.map((st,si)=> openS.has(si) ? st[2].reduce((b,d)=>b+weight(si,d),0) : 4);
   const leaves = sLeaves.reduce((a,b)=>a+b,0);
   const gap = 0.02;
   const span = Math.PI*2 - gap*V.length;
@@ -221,7 +223,7 @@ function toggleD(si,did){ const k=key(VOCAB[mod][si][0],did); if(openD.has(k)) o
 function expandAll(){ VOCAB[mod].forEach((st,si)=>{ openS.add(si); st[2].forEach(d=>openD.add(key(st[0],d[0]))); }); draw(); }
 function collapseAll(){ openS=new Set(); openD=new Set(); draw(); }
 function openSelected(){ Object.keys(sel).forEach(k=>{ const si=VOCAB[mod].findIndex(st=>k.startsWith(st[0]+".")); if(si>=0){ openS.add(si); openD.add(k); } }); }
-const R = {stage:118, dec:230, op:345, label:356};
+const R = {stage:130, dec:255, op:385, label:396};
 const COL = ["#1b8a8f","#2b5bd7","#7b3fa0","#d08a1c","#3a8f4a"];   // one hue per stage
 function tint(hex,t){ const n=parseInt(hex.slice(1),16); const r=n>>16,g=(n>>8)&255,b=n&255;
   const f=x=>Math.round(x+(255-x)*t).toString(16).padStart(2,"0"); return "#"+f(r)+f(g)+f(b); }
@@ -237,7 +239,7 @@ function draw(){
   const N = layout();
   const V = VOCAB[mod];
   const altSel = (alt && alt.modality===mod) ? alt.choices : null;
-  let s = `<svg viewBox="-470 -470 940 940" xmlns="http://www.w3.org/2000/svg">`;
+  let s = `<svg viewBox="-520 -520 1040 1040" xmlns="http://www.w3.org/2000/svg">`;
   s += `<defs>`+COL.map((c,i)=>`<radialGradient id="g${i}" cx="0" cy="0" r="${R.op}" gradientUnits="userSpaceOnUse"><stop offset="0.3" stop-color="${c}"/><stop offset="1" stop-color="${tint(c,0.45)}"/></radialGradient>`).join("")+`</defs>`;
   s += `<circle class="ring" r="${R.stage}"/><circle class="ring" r="${R.dec}"/><circle class="ring" r="${R.op}"/>`;
   // links: decision -> option
@@ -260,29 +262,29 @@ function draw(){
     s += `<path class="lk ${on?"on":""}" stroke="${COL[st.i]}" d="${link(0,st.ang,R.stage,st.ang)}"/>`;
   });
   // centre
-  s += `<circle r="26" fill="#fff" stroke="#1c2430" stroke-width="1.8"/><text text-anchor="middle" y="4" font-size="11" font-weight="600">${mod==="eeg"?"EEG":"fMRI"}</text>`;
+  s += `<circle r="32" fill="#fff" stroke="#1b2230" stroke-width="2"/><text text-anchor="middle" y="5" font-size="14" font-weight="700" letter-spacing=".04em">${mod==="eeg"?"EEG":"fMRI"}</text>`;
   // stages
   N.stages.forEach(st=>{ const [x,y]=pt(R.stage,st.ang);
     const left = Math.cos(st.ang)<0; const rot = st.ang*180/Math.PI + (left?180:0);
     const nd = V[st.i][2].filter(d=>sel[key(st.lab,d[0])]).length;
-    s += `<g class="st ${st.open?"open":""}" style="--c:${COL[st.i]}" onclick="toggleS(${st.i})" onmouseenter="note(${st.i},null)" transform="translate(${x},${y}) rotate(${rot})"><circle r="${st.open?8:11}" fill="${st.open?COL[st.i]:"#fff"}" stroke="${COL[st.i]}"/>`+
+    s += `<g class="st ${st.open?"open":""}" style="--c:${COL[st.i]}" onclick="toggleS(${st.i})" onmouseenter="note(${st.i},null)" transform="translate(${x},${y}) rotate(${rot})"><circle r="${st.open?9:13}" fill="${st.open?COL[st.i]:"#fff"}" stroke="${COL[st.i]}"/>`+
          (st.open?"":`<text class="n" y="3.5" text-anchor="middle" transform="rotate(${-rot})">${nd||"+"}</text>`)+
-         `<text x="${left?14:-14}" y="-7" text-anchor="${left?"start":"end"}">${esc(st.lab)}</text></g>`; });
+         `<text x="${(left?18:-18)*(st.open?1:-1)}" y="${st.open?20:-9}" text-anchor="${(left===st.open)?"start":"end"}">${esc(st.lab)}</text></g>`; });
   // decisions
   N.decs.forEach(d=>{ const [x,y]=pt(R.dec,d.ang); const k=key(V[d.s][0],d.id);
     const left = Math.cos(d.ang)<0; const rot = d.ang*180/Math.PI + (left?180:0);
-    const tx = left? -10 : 10;
-    s += `<g class="dc ${sel[k]?"on":""} ${d.open?"open":""}" style="--c:${COL[d.s]}" onclick="toggleD(${d.s},'${d.id}')" onmouseenter="note(${d.s},'${d.id}')" transform="translate(${x},${y}) rotate(${rot})"><circle r="${d.open?5.5:7}"/>`+
-         `<text x="${tx}" y="3.5" text-anchor="${left?"end":"start"}" transform="${left?"rotate(180)":""}">${esc(d.lab)}</text></g>`; });
+    const tx = (left? -13 : 13)*(d.open?-1:1);
+    s += `<g class="dc ${sel[k]?"on":""} ${d.open?"open":""}" style="--c:${COL[d.s]}" onclick="toggleD(${d.s},'${d.id}')" onmouseenter="note(${d.s},'${d.id}')" transform="translate(${x},${y}) rotate(${rot})"><circle r="${d.open?6.5:8.5}"/>`+
+         `<text x="${tx}" y="${d.open?-10:4.5}" text-anchor="${(left!==d.open)?"end":"start"}" transform="${left?"rotate(180)":""}">${esc(d.lab)}</text></g>`; });
   // options
   N.ops.forEach(o=>{ const [x,y]=pt(R.op,o.ang); const k=key(V[o.s][0],o.d);
     const on = sel[k]===o.id, al = altSel && altSel[k]===o.id;
     const diff = al && sel[k] && sel[k]!==o.id ? false : (on && altSel && altSel[k] && altSel[k]!==o.id);
     const left = Math.cos(o.ang)<0; const rot = o.ang*180/Math.PI + (left?180:0);
-    const tx = left? -9 : 9;
+    const tx = left? -11 : 11;
     s += `<g class="op ${on?"on":""} ${al?"alt":""} ${diff?"diff":""}" style="--c:${tint(COL[o.s],0.1)}" onclick="pick('${esc(V[o.s][0])}','${o.d}','${o.id}')" onmouseenter="note(${o.s},'${o.d}')" transform="translate(${x},${y}) rotate(${rot})">`+
-         `<title>${esc(V[o.s][0])} › ${esc(N.decs.find(x=>x.s===o.s&&x.id===o.d).lab)} › ${esc(o.lab)}</title><circle r="4.5"/>`+
-         `<text x="${tx}" y="3.2" text-anchor="${left?"end":"start"}" transform="${left?"rotate(180)":""}">${esc(o.lab)}</text></g>`; });
+         `<title>${esc(V[o.s][0])} › ${esc(N.decs.find(x=>x.s===o.s&&x.id===o.d).lab)} › ${esc(o.lab)}</title><circle r="5.5"/>`+
+         `<text x="${tx}" y="4.2" text-anchor="${left?"end":"start"}" transform="${left?"rotate(180)":""}">${esc(o.lab)}</text></g>`; });
   s += `</svg>`;
   stage.innerHTML = s;
   side();
