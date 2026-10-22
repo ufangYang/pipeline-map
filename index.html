@@ -15,7 +15,7 @@
   header h1 { font-family:"Source Serif 4",Georgia,serif; font-size:26px; margin:0; font-weight:600; letter-spacing:-.01em; }
   header .sub { color:var(--muted); font-size:14.5px; margin:0; }
   .mod { grid-row:1/3; grid-column:2; display:flex; gap:0; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
-  .mod button { border:none; background:#fff; padding:8px 18px; font-size:14px; font-weight:500; cursor:pointer; color:var(--muted); }
+  .mod button { border:none; background:#fff; white-space:nowrap; padding:8px 18px; font-size:14px; font-weight:500; cursor:pointer; color:var(--muted); }
   .mod button.on { background:var(--path); color:#fff; }
   main { flex:1; display:grid; grid-template-columns: 1fr 340px; min-height:0; }
   #stage { position:relative; min-width:0; min-height:0; overflow:hidden; }
@@ -51,22 +51,28 @@
   .st .n { font-size:13px; font-weight:700; fill:var(--c); }
   .dc { cursor:pointer; }
   .dc:not(.open) circle { stroke-width:2.4; }
-  .st text { font-size:15px; font-weight:600; fill:var(--ink); letter-spacing:.01em; }
+  .st text { font-size:16px; font-weight:600; fill:var(--ink); letter-spacing:.01em; }
   .dc circle { fill:#fff; stroke:#8a94a0; stroke-width:1.6; cursor:default; }
   .dc circle { stroke:var(--c); }
   .dc.on circle { fill:var(--c); }
   .dc.on text { font-weight:600; fill:var(--ink); }
-  .dc text { font-size:13.5px; font-weight:500; fill:#2f3745; }
+  .dc text { font-size:14.5px; font-weight:500; fill:#2f3745; }
   .op { cursor:pointer; }
   .op circle { fill:#fff; stroke:#b4bcc5; stroke-width:1.5; transition:r .12s; }
-  .op text { font-size:12.5px; fill:#4d5664; }
+  .op text { font-size:13.5px; fill:#4d5664; }
   .op:hover circle { stroke:var(--c); }
   .op.on circle { fill:var(--c); stroke:var(--c); }
   .op.on text { fill:var(--ink); font-weight:600; }
   .op.alt circle { stroke:var(--alt); stroke-width:3; }
   .op.diff circle { stroke:var(--diff); stroke-width:3.2; }
   .ring { fill:none; stroke:#e9ecf1; stroke-width:1; stroke-dasharray:2 4; }
-  @media (max-width: 860px) { main { grid-template-columns:1fr; } aside { border-left:none; border-top:1px solid var(--line); } }
+  @media (max-width: 860px) {
+    main { grid-template-columns:1fr; grid-template-rows:auto auto; }
+    #stage { height:min(96vw, 72vh); }
+    aside { border-left:none; border-top:1px solid var(--line); padding:16px 18px; }
+    header { padding:16px 18px 12px; } header h1 { font-size:22px; } .mod { grid-row:auto; grid-column:1; justify-self:start; }
+    footer { padding:10px 18px; font-size:11.5px; }
+  }
 </style>
 </head>
 <body>
@@ -239,7 +245,8 @@ function draw(){
   const N = layout();
   const V = VOCAB[mod];
   const altSel = (alt && alt.modality===mod) ? alt.choices : null;
-  let s = `<svg viewBox="-520 -520 1040 1040" xmlns="http://www.w3.org/2000/svg">`;
+  const ext = N.ops.length ? 500 : N.decs.length ? 440 : 290;
+  let s = `<svg viewBox="${-ext} ${-ext} ${2*ext} ${2*ext}" xmlns="http://www.w3.org/2000/svg">`;
   s += `<defs>`+COL.map((c,i)=>`<radialGradient id="g${i}" cx="0" cy="0" r="${R.op}" gradientUnits="userSpaceOnUse"><stop offset="0.3" stop-color="${c}"/><stop offset="1" stop-color="${tint(c,0.45)}"/></radialGradient>`).join("")+`</defs>`;
   s += `<circle class="ring" r="${R.stage}"/><circle class="ring" r="${R.dec}"/><circle class="ring" r="${R.op}"/>`;
   // links: decision -> option
