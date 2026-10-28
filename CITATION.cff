@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use this tool, please cite it as below."
+title: "Neuroimaging pipeline map"
+type: software
+authors:
+  - family-names: Yang
+    given-names: Yu-Fang
+    affiliation: "Freie Universität Berlin"
+version: 0.3.0
+date-released: 2026-10-28
+license: MIT
+repository-code: "https://github.com/ufangYang/pipeline-map"
+url: "https://www.yufang-yang.com/pipeline-map/"
+abstract: "An interactive map for declaring, comparing and reporting the processing path of an EEG, MEG or fMRI study, with planned and executed records."
+keywords:
+  - EEG
+  - MEG
+  - fMRI
+  - preprocessing
+  - preregistration
+  - reproducibility
+references:
+  - type: article
+    title: "Challenging the status quo: A guide to open and reproducible neuroimaging for early career researchers"
+    authors:
+      - family-names: Bhagwat
+        given-names: Nikhil
+      - family-names: Urchs
+        given-names: Sebastian
+      - family-names: Poline
+        given-names: Jean-Baptiste
+      - family-names: Yang
+        given-names: Yu-Fang
+    journal: "Imaging Neuroscience"
+    volume: 3
+    year: 2025
+    doi: 10.1162/IMAG.a.21
