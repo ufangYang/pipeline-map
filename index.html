@@ -12,15 +12,24 @@
   html, body { margin:0; height:100%; } body { height:100vh; }
   body { font-family:Inter,-apple-system,Segoe UI,Roboto,Helvetica,sans-serif; font-size:15px; color:var(--ink); background:var(--bg); display:flex; flex-direction:column; -webkit-font-smoothing:antialiased; }
   header { display:grid; grid-template-columns:1fr auto; column-gap:22px; row-gap:4px; align-items:center; padding:20px 28px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap; background:var(--card); }
-  header h1 { font-family:"Source Serif 4",Georgia,serif; font-size:26px; margin:0; font-weight:600; letter-spacing:-.01em; }
-  header .sub { color:var(--muted); font-size:14.5px; margin:0; }
+  header h1 { font-family:"Source Serif 4",Georgia,serif; font-size:30px; margin:0; font-weight:600; letter-spacing:-.01em; }
+  header .sub { color:var(--muted); font-size:16px; margin:0; }
   .mod { grid-row:1/3; grid-column:2; display:flex; gap:0; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
-  .mod button { border:none; background:#fff; white-space:nowrap; padding:8px 18px; font-size:14px; font-weight:500; cursor:pointer; color:var(--muted); }
+  .mod button { border:none; background:#fff; white-space:nowrap; padding:9px 18px; font-size:15px; font-weight:500; cursor:pointer; color:var(--muted); }
   .mod button.on { background:var(--path); color:#fff; }
-  main { flex:1; display:grid; grid-template-columns: 1fr 340px; min-height:0; }
-  #stage { position:relative; min-width:0; min-height:0; overflow:hidden; }
+  main { flex:1; position:relative; min-height:0; display:flex; }
+  #stage { position:relative; flex:1; min-width:0; min-height:0; overflow:hidden; }
   #stage svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
-  aside { border-left:1px solid var(--line); padding:20px 22px; overflow:auto; font-size:14.5px; background:var(--card); }
+  aside { position:absolute; top:16px; right:16px; bottom:16px; width:360px; padding:22px 24px; overflow:auto; font-size:15.5px; background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 12px 40px rgba(27,34,48,.12); transition:transform .3s ease, opacity .3s ease; }
+  main.panel-open #stage { margin-right:392px; }
+  @media (max-width: 860px) { main.panel-open #stage { margin-right:0; } }
+  aside.hidden { transform:translateX(calc(100% + 24px)); opacity:0; pointer-events:none; }
+  aside .close { position:absolute; top:12px; right:14px; border:none; background:none; font-size:26px; line-height:1; color:var(--muted); cursor:pointer; }
+  #tab { position:absolute; top:16px; right:16px; border:1px solid var(--line); background:var(--card); border-radius:999px; padding:10px 18px; font:inherit; font-size:15px; font-weight:600; color:var(--ink); cursor:pointer; box-shadow:0 6px 20px rgba(27,34,48,.10); }
+  #tab b { display:inline-block; min-width:26px; margin-left:6px; padding:2px 8px; border-radius:999px; background:var(--path); color:#fff; font-size:13px; text-align:center; }
+  .beta { font-family:Inter,sans-serif; font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:#b4570f; background:#fdf0e3; border-radius:999px; padding:4px 10px; vertical-align:middle; margin-left:8px; }
+  footer a { color:inherit; text-decoration:underline; text-decoration-color:#c9ced6; }
+  footer { display:flex; flex-direction:column; gap:2px; }
   aside h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:22px 0 8px; font-weight:600; }
   aside h2:first-child { margin-top:0; }
   .count { font-family:"Source Serif 4",Georgia,serif; font-size:40px; font-weight:600; color:var(--path); line-height:1; }
@@ -38,7 +47,7 @@
   .path .d.diff .v { color:var(--diff); }
   #note { border:1px solid var(--line); border-radius:10px; padding:14px 16px; background:#f6f8fb; min-height:84px; line-height:1.45; }
   #note b { display:block; margin-bottom:5px; font-size:15px; }
-  #note .r { color:var(--muted); font-size:12.5px; margin-top:8px; }
+  #note .r { display:none; }
   footer { border-top:1px solid var(--line); padding:12px 28px; color:var(--muted); font-size:12.5px; line-height:1.5; background:var(--card); }
   /* svg */
   .lk { fill:none; stroke-width:1.3; opacity:.22; stroke-linecap:round; }
@@ -52,17 +61,17 @@
   .st .n { font-size:17px; font-weight:700; fill:var(--c); stroke:none; }
   .dc { cursor:pointer; }
   .dc:not(.open) circle { stroke-width:2.4; }
-  #stage text.lab { cursor:pointer; font-size:25px; font-weight:650; fill:var(--c); letter-spacing:.005em; }
+  #stage text.lab { cursor:pointer; font-size:29px; font-weight:650; fill:var(--c); letter-spacing:.005em; }
   .dc circle { fill:#fff; stroke:#8a94a0; stroke-width:1.6; cursor:default; }
   .dc circle { stroke:var(--c); }
   .dc.on circle { fill:var(--c); }
   .dc.on text { font-weight:600; fill:var(--ink); }
-  .dc text { font-size:19.5px; font-weight:500; fill:#2a3240; }
+  .dc text { font-size:22px; font-weight:500; fill:#2a3240; }
   .op { cursor:pointer; }
   .op circle { fill:#fff; stroke:#bcc3cc; stroke-width:1.5; }
   .op .halo { fill:var(--c); opacity:0; stroke:none; }
   .op.on .halo { opacity:.18; }
-  .op text { font-size:18px; fill:#59626f; }
+  .op text { font-size:20.5px; fill:#59626f; }
   .op:hover circle { stroke:var(--c); }
   .op.on circle { fill:var(--c); stroke:var(--c); }
   .op.on text { fill:var(--ink); font-weight:600; }
@@ -70,23 +79,25 @@
   .op.diff circle { stroke:var(--diff); stroke-width:3.2; }
   .ring { fill:none; stroke:#eceff3; stroke-width:1; }
   @media (max-width: 860px) {
-    main { grid-template-columns:1fr; grid-template-rows:auto auto; }
-    #stage { height:min(96vw, 72vh); }
-    aside { border-left:none; border-top:1px solid var(--line); padding:16px 18px; }
-    header { padding:16px 18px 12px; } header h1 { font-size:22px; } .mod { grid-row:auto; grid-column:1; justify-self:start; }
+    #stage { height:min(100vw, 75vh); flex:none; width:100%; }
+    main { flex-direction:column; }
+    aside { width:auto; left:12px; right:12px; top:auto; bottom:12px; max-height:70%; }
+    header { padding:16px 18px 12px; } header h1 { font-size:24px; } .mod { grid-row:auto; grid-column:1; justify-self:start; }
     footer { padding:10px 18px; font-size:11.5px; }
   }
 </style>
 </head>
 <body>
 <header>
-  <h1>Neuroimaging pipeline map</h1>
-  <p class="sub">Click a stage to open its decisions, a decision to open its options, and an option to declare it. Nothing leaves your browser.</p>
-  <div class="mod"><button id="m_eeg" class="on" onclick="setMod('eeg')">EEG / ERP</button><button id="m_fmri" onclick="setMod('fmri')">fMRI</button></div>
+  <h1>Neuroimaging pipeline map <span class="beta">beta</span></h1>
+  <p class="sub">Open a stage, then a decision, then choose an option.</p>
+  <div class="mod"><button id="m_eeg" class="on" onclick="setMod('eeg')">EEG / ERP</button><button id="m_meg" onclick="setMod('meg')">MEG</button><button id="m_fmri" onclick="setMod('fmri')">fMRI</button></div>
 </header>
 <main>
   <div id="stage"></div>
-  <aside>
+  <button id="tab" onclick="togglePanel()"><span id="tabtxt">Your path</span> <b id="tabn">0</b></button>
+  <aside id="panel">
+    <button class="close" onclick="togglePanel()" aria-label="Hide panel">×</button>
     <h2>Declared</h2>
     <div class="count"><span id="n">0</span><small>of <span id="ntot">0</span> decisions</small></div>
     <div class="btns">
@@ -99,14 +110,14 @@
     </div>
     <div id="msg"></div>
     <h2>Selected node</h2>
-    <div id="note"><span style="color:var(--muted)">Hover a decision or option to read its note.</span></div>
+    <div id="note"><span style="color:var(--muted)">Point at a decision to read its note.</span></div>
     <h2>Path</h2>
     <div id="path" class="path"></div>
   </aside>
 </main>
 <footer>
-  Stages follow the research timeline in Bhagwat, Urchs, Poline and Yang (2025), <i>Imaging Neuroscience</i>, doi 10.1162/IMAG.a.21, with acquisition added.
-  EEG vocabulary follows ARTEM-IS (Styles et al., 2021) and COBIDAS MEEG (Pernet et al., 2020). A record is a list of option identifiers; the schema is versioned in this file.
+  <span>Developed by Yu-Fang Yang · Beta version, contributions are welcome on <a href="https://github.com/ufangYang/pipeline-map">GitHub</a> · <a href="https://github.com/ufangYang/pipeline-map/blob/main/LICENSE">MIT License</a></span>
+  <span>Based on Bhagwat, Urchs, Poline and Yang (2025), <i>Imaging Neuroscience</i>, <a href="https://doi.org/10.1162/IMAG.a.21">doi 10.1162/IMAG.a.21</a>, ARTEM-IS (Styles et al., 2021) and COBIDAS MEEG (Pernet et al., 2020).</span>
 </footer>
 
 <script>
@@ -116,19 +127,19 @@ const SCHEMA_VERSION = "0.1";
 // stage -> decisions -> options.  id strings are the record; labels can change, ids should not.
 const VOCAB = {
 eeg: [
- ["Acquisition", "Not covered by the 2025 guide. Declaring these before the first participant is the point of a protocol.", [
+ ["Acquisition", "Decisions made at the recording itself. The 2025 guide does not cover this stage.", [
   ["ref_rec","Reference at recording",[["fcz","FCz"],["cz","Cz"],["mast","Linked mastoids"],["nose","Nose"],["cms","CMS/DRL"]],"Hardware reference. Re-referencing later does not undo its noise profile."],
   ["srate","Sampling rate",[["250","250 Hz"],["500","500 Hz"],["1000","1000 Hz"],["2000","≥ 2000 Hz"]],"500 Hz suffices for most ERP components; higher rates matter for ABR or high-gamma."],
   ["eltype","Electrode type",[["gel","Gel"],["saline","Saline"],["dry","Dry"]],"Dry and saline systems trade impedance for setup time; report impedance targets."],
   ["online","Online filter",[["dc","DC"],["hp001","HP 0.01 Hz"],["hp01","HP 0.1 Hz"],["hp1","HP ≥ 1 Hz"]],"An online high-pass cannot be undone offline."]
  ]],
- ["Curation", "Organise raw data so that a stranger can find every file. The guide starts here.", [
+ ["Curation", "Organising the raw data so that another person can find and read every file.", [
   ["fmt","Data format",[["bids","BIDS-EEG"],["vendor","Vendor format"],["other","Other"]],"BIDS-EEG (Pernet et al., 2019). Vendor formats are readable, not findable."],
   ["conv","Converter",[["mnebids","MNE-BIDS"],["eeglab","EEGLAB BIDS plugin"],["bidscoin","BIDScoin"],["manual","Manual"]],"Appelhoff et al. (2019) for MNE-BIDS."],
   ["events","Event annotation",[["tsv","events.tsv"],["hed","HED tags"],["none","Trigger codes only"]],"Trigger codes without a mapping file are the most common reason an ERP dataset cannot be reused."],
   ["manifest","Participant manifest",[["yes","Maintained"],["no","None"]],"A tabular record of who has which data; the guide's first recommendation."]
  ]],
- ["Processing", "The forking paths. EEGManyPipelines found no two identical pipelines among 168 teams.", [
+ ["Processing", "The steps where analysts differ most. In EEGManyPipelines, no two of 168 teams used the same pipeline.", [
   ["hp","High-pass",[["none","None"],["001","0.01 Hz"],["01","0.1 Hz"],["05","0.5 Hz"],["1","≥ 1 Hz"]],"Cutoffs above 0.1 Hz distort slow components such as the P3 and LPP (Tanner et al., 2015)."],
   ["lp","Low-pass",[["none","None"],["30","30 Hz"],["40","40 Hz"],["100","100 Hz"]],"Report filter type and order, not only the cutoff."],
   ["reref","Re-reference",[["keep","Keep recording"],["avg","Average"],["mast","Mastoids"],["rest","REST"]],"Average reference changes topographies and amplitudes; mastoid reference is the ERP convention."],
@@ -138,15 +149,50 @@ eeg: [
   ["base","Baseline",[["none","None"],["200","−200 to 0 ms"],["100","−100 to 0 ms"],["regress","Regression"]],"Alday (2019) on regression-based baselines."],
   ["order","Order of steps",[["fixed","Declared"],["none","Not declared"]],"The order changes the result. ARTEM-IS asks for it explicitly."]
  ]],
- ["Annotation", "Make the derived data understandable without an email to the author.", [
+ ["Annotation", "Describing the derived data so that it can be used without contacting the authors.", [
   ["dict","Data dictionary",[["vocab","With vocabulary"],["free","Free text"],["none","None"]],"Column names, value codes, missing-data codes, valid ranges."],
   ["report","Reporting template",[["artemis","ARTEM-IS"],["cobidas","COBIDAS MEEG"],["none","None"]],"Structured methods reporting. Both are free."],
   ["prov","Provenance",[["container","Container"],["script","Versioned scripts"],["none","None"]],"Container plus versioned config is the guide's recommendation."]
  ]],
- ["Publishing", "The manuscript is one research object among five.", [
+ ["Publishing", "Sharing the data, code and registration together with the paper.", [
   ["data","Data",[["openneuro","OpenNeuro"],["zenodo","Zenodo"],["osf","OSF"],["request","On request"],["none","Not shared"]],"Derived data can often be shared when raw data cannot."],
   ["code","Code",[["doi","Repository + DOI"],["repo","Repository"],["request","On request"],["none","Not shared"]],"A DOI makes the code citable and freezes the version."],
   ["reg","Registration",[["prereg","Preregistration"],["rr","Registered Report"],["none","None"]],"For EEG, the preregistration must fix the processing path, not only the hypothesis."]
+ ]]
+],
+meg: [
+ ["Acquisition", "Decisions made at the recording itself. The 2025 guide does not cover this stage.", [
+  ["system","Sensor type",[["sq_mag","SQUID magnetometers"],["sq_grad","SQUID gradiometers"],["opm","OPM"]],"OPM sensors sit on the scalp and need different noise handling from SQUID systems."],
+  ["srate","Sampling rate",[["600","600 Hz"],["1000","1000 Hz"],["2000","≥ 2000 Hz"]],"Report the online filters together with the rate."],
+  ["hpi","Head position",[["cont","Continuous HPI"],["block","Per block"],["none","Not tracked"]],"Head movement relative to the sensors changes the forward model."],
+  ["empty","Empty-room recording",[["yes","Recorded"],["no","None"]],"Needed to estimate the noise covariance."],
+  ["digit","Head digitisation",[["polhemus","Polhemus"],["scan","3D scan"],["none","None"]],"Needed for coregistration with MRI."]
+ ]],
+ ["Curation", "Organising the raw data so that another person can find and read every file.", [
+  ["fmt","Data format",[["bids","BIDS-MEG"],["vendor","Vendor format"]],"BIDS-MEG (Niso et al., 2018)."],
+  ["conv","Converter",[["mnebids","MNE-BIDS"],["fieldtrip","FieldTrip data2bids"],["manual","Manual"]],""],
+  ["events","Event annotation",[["tsv","events.tsv"],["hed","HED tags"],["none","Trigger codes only"]],""],
+  ["mri","Anatomical MRI",[["indiv","Individual"],["template","Template"],["none","None"]],""]
+ ]],
+ ["Processing", "The steps where analysts differ most.", [
+  ["noise","Environmental noise",[["sss","SSS"],["tsss","tSSS"],["hfc","HFC (OPM)"],["amm","AMM (OPM)"],["none","None"]],"SSS and tSSS apply to SQUID systems. HFC and AMM are used for OPM arrays."],
+  ["move","Movement compensation",[["yes","Applied"],["no","None"]],""],
+  ["hp","High-pass",[["none","None"],["01","0.1 Hz"],["1","1 Hz"]],""],
+  ["lp","Low-pass",[["40","40 Hz"],["100","100 Hz"],["none","None"]],""],
+  ["badch","Bad channels",[["visual","Visual"],["auto","Automated"],["none","None"]],""],
+  ["corr","Artefact correction",[["ica","ICA"],["ssp","SSP"],["none","None"]],""],
+  ["coreg","Coregistration",[["fid","Fiducials"],["icp","Head-shape fit"],["none","None"]],""],
+  ["source","Source model",[["lcmv","Beamformer (LCMV)"],["dics","Beamformer (DICS)"],["mne","MNE / dSPM"],["dipole","Dipole fit"],["sensor","Sensor level"]],"Source estimates depend on the forward model and the noise covariance."]
+ ]],
+ ["Annotation", "Describing the derived data so that it can be used without contacting the authors.", [
+  ["dict","Data dictionary",[["vocab","With vocabulary"],["free","Free text"],["none","None"]],""],
+  ["report","Reporting template",[["cobidas","COBIDAS MEEG"],["none","None"]],""],
+  ["prov","Provenance",[["container","Container"],["script","Versioned scripts"],["none","None"]],""]
+ ]],
+ ["Publishing", "Sharing the data, code and registration together with the paper.", [
+  ["data","Data",[["openneuro","OpenNeuro"],["zenodo","Zenodo"],["request","On request"],["none","Not shared"]],""],
+  ["code","Code",[["doi","Repository + DOI"],["repo","Repository"],["none","Not shared"]],""],
+  ["reg","Registration",[["prereg","Preregistration"],["rr","Registered Report"],["none","None"]],""]
  ]]
 ],
 fmri: [
@@ -191,11 +237,15 @@ let openS = new Set();   // open stages (index)
 let openD = new Set();   // open decisions (stage.decision key)
 const stage = document.getElementById("stage");
 
+function setModButtons(){ ["eeg","meg","fmri"].forEach(k=>document.getElementById("m_"+k).className = mod===k?"on":""); }
 function setMod(m){ if(m===mod) return; mod=m; sel={}; alt=null; openS=new Set(); openD=new Set();
-  document.getElementById("m_eeg").className = m==="eeg"?"on":"";
-  document.getElementById("m_fmri").className = m==="fmri"?"on":"";
-  document.getElementById("msg").textContent = m==="fmri" ? "fMRI vocabulary is a draft." : "";
+  setModButtons();
+  document.getElementById("msg").textContent = m==="eeg" ? "" : "The "+(m==="meg"?"MEG":"fMRI")+" vocabulary is a draft.";
   draw(); }
+function togglePanel(force){ const p=document.getElementById("panel"), t=document.getElementById("tab");
+  const hide = force!==undefined ? force : !p.classList.contains("hidden");
+  p.classList.toggle("hidden",hide); t.style.display = hide ? "" : "none";
+  document.querySelector("main").classList.toggle("panel-open",!hide); fit(); }
 
 function key(s,d){ return s+"."+d; }
 
@@ -252,6 +302,7 @@ function draw(){
   let s = `<svg viewBox="${-ext} ${-ext} ${2*ext} ${2*ext}" xmlns="http://www.w3.org/2000/svg">`;
   s += `<defs>`+COL.map((c,i)=>`<radialGradient id="g${i}" cx="0" cy="0" r="${R.op}" gradientUnits="userSpaceOnUse"><stop offset="0.3" stop-color="${c}"/><stop offset="1" stop-color="${tint(c,0.45)}"/></radialGradient>`).join("")+`</defs>`;
   s += `<circle class="ring" r="${R.stage}"/>` + (N.decs.length?`<circle class="ring" r="${R.dec}"/>`:"") + (N.ops.length?`<circle class="ring" r="${R.op}"/>`:"");
+  s += `<g id="cg">`;
   // links: decision -> option
   N.ops.forEach(o=>{
     const k=key(V[o.s][0],o.d);
@@ -272,7 +323,7 @@ function draw(){
     s += `<path class="lk ${on?"on":""}" stroke="${COL[st.i]}" d="${link(0,st.ang,R.stage,st.ang)}"/>`;
   });
   // centre
-  s += `<circle r="38" fill="#1b2230"/><text text-anchor="middle" y="6" font-size="17" font-weight="700" letter-spacing=".06em" fill="#fff" style="stroke:none">${mod==="eeg"?"EEG":"fMRI"}</text>`;
+  s += `<circle r="44" fill="#1b2230"/><text text-anchor="middle" y="7" font-size="20" font-weight="700" letter-spacing=".06em" fill="#fff" style="stroke:none">${({eeg:"EEG",meg:"MEG",fmri:"fMRI"})[mod]}</text>`;
   // stages
   N.stages.forEach(st=>{ const [x,y]=pt(R.stage,st.ang);
     const left = Math.cos(st.ang)<0; const rot = st.ang*180/Math.PI + (left?180:0);
@@ -286,9 +337,9 @@ function draw(){
   // decisions
   N.decs.forEach(d=>{ const [x,y]=pt(R.dec,d.ang); const k=key(V[d.s][0],d.id);
     const left = Math.cos(d.ang)<0; const rot = d.ang*180/Math.PI + (left?180:0);
-    const tx = left? -16 : 16;
+    const tx = (left? -16 : 16)*(d.open?-1:1);
     s += `<g class="dc ${sel[k]?"on":""} ${d.open?"open":""}" style="--c:${COL[d.s]}" onclick="toggleD(${d.s},'${d.id}')" onmouseenter="note(${d.s},'${d.id}')" transform="translate(${x},${y}) rotate(${rot})"><circle r="${d.open?7:9}"/>`+
-         `<text x="${tx}" y="${d.open?-11:6.5}" text-anchor="${left?"end":"start"}">${esc(d.lab)}</text></g>`; });
+         `<text x="${tx}" y="${d.open?-12:6.5}" text-anchor="${(left!==d.open)?"end":"start"}">${esc(d.lab)}</text></g>`; });
   // options
   N.ops.forEach(o=>{ const [x,y]=pt(R.op,o.ang); const k=key(V[o.s][0],o.d);
     const on = sel[k]===o.id, al = altSel && altSel[k]===o.id;
@@ -298,17 +349,23 @@ function draw(){
     s += `<g class="op ${on?"on":""} ${al?"alt":""} ${diff?"diff":""}" style="--c:${tint(COL[o.s],0.1)}" onclick="pick('${esc(V[o.s][0])}','${o.d}','${o.id}')" onmouseenter="note(${o.s},'${o.d}')" transform="translate(${x},${y}) rotate(${rot})">`+
          `<title>${esc(V[o.s][0])} › ${esc(N.decs.find(x=>x.s===o.s&&x.id===o.d).lab)} › ${esc(o.lab)}</title><circle class="halo" r="13"/><circle r="6"/>`+
          `<text x="${tx}" y="6" text-anchor="${left?"end":"start"}">${esc(o.lab)}</text></g>`; });
-  s += `</svg>`;
+  s += `</g></svg>`;
   stage.innerHTML = s;
+  fit();
   side();
 }
 
+// zoom the drawing to its own extent so the labels are as large as the canvas allows
+function fit(){ const svg=stage.querySelector("svg"); if(!svg) return;
+  const bb=svg.querySelector("#cg").getBBox(), pad=24;
+  svg.setAttribute("viewBox", `${bb.x-pad} ${bb.y-pad} ${bb.width+2*pad} ${bb.height+2*pad}`); }
+window.addEventListener("resize", fit);
 function pick(sname,did,oid){ const k=key(sname,did); if(sel[k]===oid) delete sel[k]; else sel[k]=oid; draw(); }
 function note(si,did){ const V=VOCAB[mod]; const st=V[si]; const box=document.getElementById("note");
   box.style.borderLeft="4px solid "+COL[si];
   if(did==null){ box.innerHTML=`<b>${esc(st[0])}</b>${esc(st[1]||"")}`; return; }
   const d=st[2].find(x=>x[0]===did); box.innerHTML=`<b>${esc(st[0])} › ${esc(d[1])}</b>${esc(d[3]||"")}`+
-    `<div class="r">${d[2].length} options · id ${esc(st[0].toLowerCase())}.${esc(did)}</div>`; }
+    ""; }
 
 function side(){
   const V=VOCAB[mod]; const altSel=(alt&&alt.modality===mod)?alt.choices:null;
@@ -323,7 +380,7 @@ function side(){
     });
     if(rows) html+=`<div style="--c:${COL[si]}"><div class="st">${esc(sname)}</div>${rows}</div>`;
   });
-  document.getElementById("n").textContent=n; document.getElementById("ntot").textContent=tot;
+  document.getElementById("n").textContent=n; document.getElementById("ntot").textContent=tot; document.getElementById("tabn").textContent=n;
   document.getElementById("path").innerHTML = html || `<span style="color:var(--muted)">No choices yet.</span>`;
 }
 
@@ -338,7 +395,7 @@ function copyLink(){ const url=location.origin+location.pathname+hashOf(); const
   navigator.clipboard.writeText(url).then(()=>m.textContent="Link copied.",()=>{history.replaceState(null,"",url); m.textContent="Link is in the address bar.";}); }
 function readHash(){ if(!location.hash.startsWith("#m=")) return;
   const q=new URLSearchParams(location.hash.slice(1)); const m=q.get("m"); if(VOCAB[m]) mod=m;
-  document.getElementById("m_eeg").className = mod==="eeg"?"on":""; document.getElementById("m_fmri").className = mod==="fmri"?"on":"";
+  setModButtons();
   sel={}; (q.get("s")||"").split(",").filter(Boolean).forEach(p=>{ const i=p.lastIndexOf(":"); if(i>0) sel[p.slice(0,i)]=p.slice(i+1); }); }
 function loadRecord(file){ if(!file) return; const r=new FileReader();
   r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.schema!=="pipeline-map") throw 0; alt=d;
@@ -348,8 +405,7 @@ function loadRecord(file){ if(!file) return; const r=new FileReader();
   r.readAsText(file); }
 function clearAll(){ sel={}; alt=null; openS=new Set(); openD=new Set(); document.getElementById("lf").value=""; document.getElementById("msg").textContent=""; history.replaceState(null,"",location.pathname); draw(); }
 
-readHash(); openSelected(); draw();
-window.addEventListener("resize", ()=>{});
+readHash(); openSelected(); togglePanel(true); draw();
 </script>
 </body>
 </html>
