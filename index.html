@@ -77,6 +77,18 @@
   .op.on text { fill:var(--ink); font-weight:600; }
   .op.alt circle { stroke:var(--alt); stroke-width:3; }
   .op.diff circle { stroke:var(--diff); stroke-width:3.2; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; margin-top:4px; }
+  .seg button { border:none; background:#fff; padding:8px 18px; font:inherit; font-size:14.5px; font-weight:600; color:var(--muted); cursor:pointer; }
+  .seg button.on { background:var(--path); color:#fff; }
+  .seg button#r_executed.on { background:var(--alt); }
+  .hint { color:var(--muted); font-size:13px; line-height:1.45; margin:8px 0 14px; }
+  .path .d { align-items:baseline; flex-wrap:wrap; }
+  .path .d input { flex-basis:100%; margin:3px 0 6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; font:inherit; font-size:13.5px; color:var(--ink); background:#fafbfc; }
+  .path .d input::placeholder { color:#a3aab4; }
+  .methods { font-family:"Source Serif 4",Georgia,serif; font-size:15.5px; line-height:1.55; color:var(--ink); background:#f6f8fb; border:1px solid var(--line); border-radius:10px; padding:14px 16px; white-space:pre-wrap; }
+  .methods:empty::before { content:"Declare a few decisions to generate the text."; color:var(--muted); font-family:Inter,sans-serif; font-size:14px; }
+  #devbox .dev { margin-top:14px; border-left:4px solid var(--diff); background:#fdf3f2; border-radius:8px; padding:10px 14px; font-size:14px; line-height:1.5; }
+  #devbox .dev b { color:var(--diff); }
   .ring { fill:none; stroke:#eceff3; stroke-width:1; }
   @media (max-width: 860px) {
     #stage { height:min(100vw, 75vh); flex:none; width:100%; }
@@ -98,21 +110,26 @@
   <button id="tab" onclick="togglePanel()"><span id="tabtxt">Your path</span> <b id="tabn">0</b></button>
   <aside id="panel">
     <button class="close" onclick="togglePanel()" aria-label="Hide panel">×</button>
-    <h2>Declared</h2>
+    <div class="seg" id="recsw"><button id="r_planned" class="on" onclick="setRec('planned')">Planned</button><button id="r_executed" onclick="setRec('executed')">Executed</button></div>
+    <p class="hint" id="rechint">You are declaring the planned pipeline. Switch to Executed after the analysis; the other path is drawn dashed.</p>
     <div class="count"><span id="n">0</span><small>of <span id="ntot">0</span> decisions</small></div>
     <div class="btns">
       <button class="b primary" onclick="exportJSON()">Export JSON</button>
       <button class="b" onclick="copyLink()">Copy link</button>
-      <label><input type="file" id="lf" accept="application/json" style="display:none" onchange="loadRecord(this.files[0])"><button class="b" onclick="document.getElementById('lf').click()">Compare with a record</button></label>
+      <label><input type="file" id="lf" accept="application/json" style="display:none" onchange="loadRecord(this.files[0])"><button class="b" onclick="document.getElementById('lf').click()">Load JSON</button></label>
       <button class="b" onclick="clearAll()">Clear</button>
       <button class="b" onclick="expandAll()">Expand all</button>
       <button class="b" onclick="collapseAll()">Collapse</button>
     </div>
     <div id="msg"></div>
-    <h2>Selected node</h2>
-    <div id="note"><span style="color:var(--muted)">Point at a decision to read its note.</span></div>
     <h2>Path</h2>
     <div id="path" class="path"></div>
+    <div id="devbox"></div>
+    <h2>Methods text</h2>
+    <div id="methods" class="methods"></div>
+    <div class="btns"><button class="b" onclick="copyMethods()">Copy methods text</button></div>
+    <h2>Note</h2>
+    <div id="note"><span style="color:var(--muted)">Point at a decision to read its note.</span></div>
   </aside>
 </main>
 <footer>
@@ -121,7 +138,7 @@
 </footer>
 
 <script>
-const SCHEMA_VERSION = "0.1";
+const SCHEMA_VERSION = "0.2";
 
 // ---- vocabularies ---------------------------------------------------------
 // stage -> decisions -> options.  id strings are the record; labels can change, ids should not.
@@ -231,14 +248,17 @@ fmri: [
 
 // ---- state ----------------------------------------------------------------
 let mod = "eeg";
-let sel = {};        // decision id -> option id
-let alt = null;      // loaded record for comparison: {modality, choices}
+// two records per session: the planned pipeline and the executed one
+let recs = {planned:{}, executed:{}}, dets = {planned:{}, executed:{}};
+let cur = "planned";
+let sel = recs.planned;   // decision key -> option id, for the record being edited
+let alt = null;           // the other record, drawn dashed
 let openS = new Set();   // open stages (index)
 let openD = new Set();   // open decisions (stage.decision key)
 const stage = document.getElementById("stage");
 
 function setModButtons(){ ["eeg","meg","fmri"].forEach(k=>document.getElementById("m_"+k).className = mod===k?"on":""); }
-function setMod(m){ if(m===mod) return; mod=m; sel={}; alt=null; openS=new Set(); openD=new Set();
+function setMod(m){ if(m===mod) return; mod=m; resetRecs(); openS=new Set(); openD=new Set();
   setModButtons();
   document.getElementById("msg").textContent = m==="eeg" ? "" : "The "+(m==="meg"?"MEG":"fMRI")+" vocabulary is a draft.";
   draw(); }
@@ -295,6 +315,7 @@ function link(r1,a1,r2,a2){
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
 function draw(){
+  syncAlt();
   const N = layout();
   const V = VOCAB[mod];
   const altSel = (alt && alt.modality===mod) ? alt.choices : null;
@@ -367,8 +388,22 @@ function note(si,did){ const V=VOCAB[mod]; const st=V[si]; const box=document.ge
   const d=st[2].find(x=>x[0]===did); box.innerHTML=`<b>${esc(st[0])} › ${esc(d[1])}</b>${esc(d[3]||"")}`+
     ""; }
 
+// ---- records ----------------------------------------------------------------
+function resetRecs(){ recs={planned:{},executed:{}}; dets={planned:{},executed:{}}; cur="planned"; sel=recs.planned; alt=null; setRecButtons(); }
+function other(){ return cur==="planned" ? "executed" : "planned"; }
+function setRecButtons(){ ["planned","executed"].forEach(k=>document.getElementById("r_"+k).className = cur===k?"on":"");
+  document.getElementById("rechint").textContent = cur==="planned"
+    ? "You are declaring the planned pipeline. Switch to Executed after the analysis; the other path is drawn dashed."
+    : "You are declaring what was actually done. The planned path is drawn dashed and differences are listed below."; }
+function setRec(r){ cur=r; sel=recs[cur]; setRecButtons(); openSelected(); Object.keys(recs[other()]).forEach(k=>{ const si=VOCAB[mod].findIndex(st=>k.startsWith(st[0]+".")); if(si>=0){ openS.add(si); openD.add(k); } }); draw(); }
+function syncAlt(){ const o=recs[other()]; alt = Object.keys(o).length ? {modality:mod, choices:o} : null; }
+function setDet(k,v){ if(v.trim()) dets[cur][k]=v; else delete dets[cur][k]; renderMethods(); renderDev(); }
+
+function optLabel(si,did,oid){ const d=VOCAB[mod][si][2].find(x=>x[0]===did); const o=d&&d[2].find(x=>x[0]===oid); return o?o[1]:oid; }
+
 function side(){
-  const V=VOCAB[mod]; const altSel=(alt&&alt.modality===mod)?alt.choices:null;
+  syncAlt();
+  const V=VOCAB[mod]; const altSel=alt?alt.choices:null;
   let tot=0, n=0, html="";
   V.forEach(([sname,,decs],si)=>{
     let rows="";
@@ -376,34 +411,115 @@ function side(){
       if(v) n++;
       if(v||a){ const lab=x=>{const o=ops.find(p=>p[0]===x); return o?o[1]:x;};
         const diff = v&&a&&v!==a;
-        rows+=`<div class="d ${diff?"diff":""}"><span class="k">${esc(dlab)}</span><span class="v">${v?esc(lab(v)):"—"}</span>${a?`<span class="v alt">${esc(lab(a))}</span>`:""}</div>`; }
+        rows+=`<div class="d ${diff?"diff":""}"><span class="k">${esc(dlab)}</span><span class="v">${v?esc(lab(v)):"not declared"}</span>${a?`<span class="v alt">${esc(lab(a))}</span>`:""}`+
+          (v?`<input value="${esc(dets[cur][k]||"")}" placeholder="${esc(ph(did))}" oninput="setDet('${k}',this.value)">`:"")+`</div>`; }
     });
     if(rows) html+=`<div style="--c:${COL[si]}"><div class="st">${esc(sname)}</div>${rows}</div>`;
   });
   document.getElementById("n").textContent=n; document.getElementById("ntot").textContent=tot; document.getElementById("tabn").textContent=n;
+  if(html && altSel) html = `<div class="d" style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)"><span class="k"></span><span>${cur}</span><span style="color:var(--alt)">${other()}</span></div>` + html;
   document.getElementById("path").innerHTML = html || `<span style="color:var(--muted)">No choices yet.</span>`;
+  renderDev(); renderMethods();
 }
+// placeholder text for the value field under each declared decision
+function ph(did){ return ({hp:"filter type and order, e.g. FIR, zero-phase", lp:"filter type and order", online:"e.g. 0.016 to 1000 Hz", rej:"threshold, e.g. ±100 µV; trials kept per condition",
+  badch:"criterion and number of channels removed", corr:"algorithm and rule, e.g. Infomax, ICLabel > 0.8", base:"window", order:"e.g. filter > re-reference > ICA > epoch > reject",
+  ref_rec:"electrode", srate:"exact rate", noise:"settings, e.g. tSSS 10 s, 0.98", source:"head model and regularisation", coreg:"MRI or template",
+  smooth:"FWHM", denoise:"regressors used", data:"link or accession number", code:"link or DOI", reg:"link to the registration"})[did] || "details (optional)"; }
 
-// ---- record ---------------------------------------------------------------
+// deviations between planned and executed
+function renderDev(){ const box=document.getElementById("devbox"); const P=recs.planned, E=recs.executed;
+  if(!Object.keys(P).length || !Object.keys(E).length){ box.innerHTML=""; return; }
+  const rows=[]; VOCAB[mod].forEach(([sname,,decs],si)=>decs.forEach(([did,dlab])=>{ const k=key(sname,did);
+    if(P[k] && E[k] && P[k]!==E[k]) rows.push(`${esc(dlab)}: planned ${esc(optLabel(si,did,P[k]))}, executed ${esc(optLabel(si,did,E[k]))}`);
+    else if(P[k] && !E[k]) rows.push(`${esc(dlab)}: planned ${esc(optLabel(si,did,P[k]))}, not reported as executed`);
+    else if(!P[k] && E[k]) rows.push(`${esc(dlab)}: not planned, executed ${esc(optLabel(si,did,E[k]))}`); }));
+  box.innerHTML = rows.length ? `<div class="dev"><b>${rows.length} deviation${rows.length>1?"s":""} from the plan</b><br>${rows.join("<br>")}</div>`
+                              : `<div class="dev" style="border-color:#3a8f4a;background:#f1f8f2"><b style="color:#3a8f4a">No deviations from the plan</b></div>`; }
+
+// ---- methods text -------------------------------------------------------------
+// sentence templates: {o} option label, {x} the value typed by the user; "id.opt" overrides "id"
+const TPL = {
+  "ref_rec":"The online reference was {o}.", "srate":"Data were sampled at {o}.", "eltype":"{O} electrodes were used.",
+  "online":"The online filter was set to {o}.", "online.dc":"Data were recorded without an online high-pass filter (DC).",
+  "system":"Data were recorded with {o}.", "hpi":"Head position was tracked ({o}).", "hpi.none":"Head position was not tracked.",
+  "empty":"An empty-room recording was acquired.", "empty.no":"No empty-room recording was acquired.", "digit":"Head shape was digitised with a {o} system.", "digit.none":"Head shape was not digitised.",
+  "field":"Images were acquired at {o}.", "tr":"The repetition time was {o}.", "mb.yes":"Multiband acquisition was used.", "mb.no":"Multiband acquisition was not used.", "fmap.yes":"A field map was acquired.", "fmap.no":"No field map was acquired.",
+  "fmt":"Raw data were organised as {o}.", "fmt.vendor":"Raw data were kept in the vendor format.", "fmt.dicom":"Raw data were kept as DICOM files.",
+  "conv":"Conversion used {o}.", "conv.manual":"Data were organised manually.",
+  "events":"Events were annotated with {o}.", "events.none":"Events were stored as trigger codes only.",
+  "manifest.yes":"A participant manifest was maintained.", "manifest.no":"No participant manifest was kept.",
+  "mri":"An {o} anatomical MRI was used.", "mri.none":"No anatomical MRI was used.",
+  "hp":"Data were high-pass filtered at {o}.", "hp.none":"No offline high-pass filter was applied.",
+  "lp":"Data were low-pass filtered at {o}.", "lp.none":"No low-pass filter was applied.",
+  "reref.keep":"Data were kept on the recording reference.", "reref.avg":"Data were re-referenced to the average reference.", "reref.mast":"Data were re-referenced to the linked mastoids.", "reref.rest":"Data were re-referenced with REST.",
+  "badch":"Bad channels were identified by {o}.", "badch.none":"No channels were rejected.", "badch.cleanraw":"Bad channels were identified with clean_rawdata.",
+  "corr":"Artefacts were corrected with {o}.", "corr.none":"No artefact correction was applied.",
+  "rej":"Trials were rejected by {o} criterion.", "rej.none":"No trials were rejected.", "rej.visual":"Trials were rejected by visual inspection.",
+  "base":"Baseline correction used the {o} interval.", "base.none":"No baseline correction was applied.", "base.regress":"Baseline correction used regression.",
+  "order.fixed":"The order of the preprocessing steps was declared in advance.", "order.none":"The order of the preprocessing steps was not declared.",
+  "noise":"Environmental noise was reduced with {o}.", "noise.none":"No environmental noise reduction was applied.",
+  "move.yes":"Head movement was compensated.", "move.no":"Head movement was not compensated.",
+  "coreg":"Coregistration used {o}.", "coreg.none":"No coregistration was performed.", "source":"Sources were estimated with {o}.", "source.sensor":"Analyses were performed at the sensor level.",
+  "pipe":"Preprocessing used {o}.", "stc.yes":"Slice timing correction was applied.", "stc.no":"Slice timing correction was not applied.",
+  "sdc":"Susceptibility distortion was corrected with a {o} approach.", "sdc.none":"Susceptibility distortion was not corrected.",
+  "norm":"Images were normalised to {o}.", "norm.native":"Analyses were performed in native space.", "smooth":"Images were smoothed with a {o} kernel.", "smooth.none":"No spatial smoothing was applied.",
+  "denoise":"Confounds were modelled with {o}.", "qc":"Quality control used {o}.", "qc.none":"No formal quality control was reported.",
+  "dict":"A data dictionary was provided ({o}).", "dict.none":"No data dictionary was provided.",
+  "report":"Methods are reported following {o}.", "report.none":"",
+  "prov":"Provenance was recorded with {o}.", "prov.none":"",
+  "data":"Data are available on {o}.", "data.request":"Data are available on request.", "data.none":"Data are not shared.",
+  "code":"Code is available in a {o}.", "code.request":"Code is available on request.", "code.none":"Code is not shared.",
+  "reg":"The study was registered as a {o}.", "reg.none":"The study was not preregistered."
+};
+const LOWER = new Set(["Average","Mastoids","Visual","Kurtosis","Correlation","Amplitude","Peak-to-peak","Joint probability","Regression","Individual","Template","Fiducials","Head-shape fit","Container","Versioned scripts","Repository","Repository + DOI","Preregistration","Registered Report","Gel","Saline","Dry","Continuous HPI","Per block","Maintained","Free text","With vocabulary","Motion parameters","Field map","Fieldmap-less"]);
+function sentence(si,did,oid,x){ const st=VOCAB[mod][si][0], d=VOCAB[mod][si][2].find(z=>z[0]===did); let o=optLabel(si,did,oid);
+  let t = TPL[did+"."+oid]; if(t===undefined) t=TPL[did]; if(t===undefined) t=d[1]+": {o}.";
+  if(!t) return "";
+  const ol = LOWER.has(o) ? o.charAt(0).toLowerCase()+o.slice(1) : o;
+  t = t.replace("{O}", o).replace("{o}", ol);
+  if(x) t = t.replace(/\.$/, " ("+x+").");
+  return t; }
+function methodsText(which){ const R=recs[which], D=dets[which]; const out=[];
+  VOCAB[mod].forEach(([sname,,decs],si)=>{ const ss=[]; decs.forEach(([did])=>{ const k=key(sname,did); if(R[k]) { const t=sentence(si,did,R[k],D[k]); if(t) ss.push(t); } }); if(ss.length) out.push(ss.join(" ")); });
+  let txt = out.join("\n\n");
+  if(which==="executed" && Object.keys(recs.planned).length){ const dev=[];
+    VOCAB[mod].forEach(([sname,,decs],si)=>decs.forEach(([did,dlab])=>{ const k=key(sname,did); const P=recs.planned[k], E=recs.executed[k];
+      const lo=x=>LOWER.has(x)?x.charAt(0).toLowerCase()+x.slice(1):x; if(P && E && P!==E) dev.push(`${dlab.toLowerCase()} (planned ${lo(optLabel(si,did,P))}, executed ${lo(optLabel(si,did,E))})`); }));
+    if(dev.length) txt += `\n\nThe analysis deviated from the preregistered plan in ${dev.length===1?"one respect":(["","","two","three","four","five","six","seven","eight","nine"][dev.length]||dev.length)+" respects"}: ${dev.join("; ")}.`;
+    else if(txt) txt += "\n\nThe analysis followed the preregistered plan.";
+  }
+  return txt; }
+function renderMethods(){ document.getElementById("methods").textContent = methodsText(cur); }
+function copyMethods(){ const t=methodsText(cur); const m=document.getElementById("msg");
+  navigator.clipboard.writeText(t).then(()=>m.textContent="Methods text copied.",()=>m.textContent="Select the text and copy it by hand."); }
+
+// ---- files and links ----------------------------------------------------------
 function record(){ return { schema:"pipeline-map", schema_version:SCHEMA_VERSION, modality:mod,
-  generated:new Date().toISOString().slice(0,19).replace("T"," ")+" UTC", choices:sel }; }
+  generated:new Date().toISOString().slice(0,19).replace("T"," ")+" UTC",
+  planned:{choices:recs.planned, details:dets.planned}, executed:{choices:recs.executed, details:dets.executed} }; }
 function download(name,text){ const b=new Blob([text],{type:"application/json"}); const u=URL.createObjectURL(b);
   const a=document.createElement("a"); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
 function exportJSON(){ download(`pipeline_${mod}_${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(record(),null,2)); }
-function hashOf(){ return "#m="+mod+"&s="+Object.entries(sel).map(([k,v])=>k+":"+v).join(","); }
-function copyLink(){ const url=location.origin+location.pathname+hashOf(); const m=document.getElementById("msg");
-  navigator.clipboard.writeText(url).then(()=>m.textContent="Link copied.",()=>{history.replaceState(null,"",url); m.textContent="Link is in the address bar.";}); }
-function readHash(){ if(!location.hash.startsWith("#m=")) return;
-  const q=new URLSearchParams(location.hash.slice(1)); const m=q.get("m"); if(VOCAB[m]) mod=m;
-  setModButtons();
-  sel={}; (q.get("s")||"").split(",").filter(Boolean).forEach(p=>{ const i=p.lastIndexOf(":"); if(i>0) sel[p.slice(0,i)]=p.slice(i+1); }); }
+function applyRecord(d){ if(!d || d.schema!=="pipeline-map") throw 0; if(VOCAB[d.modality]) mod=d.modality; setModButtons();
+  recs={planned:{},executed:{}}; dets={planned:{},executed:{}};
+  if(d.planned||d.executed){ ["planned","executed"].forEach(r=>{ if(d[r]){ recs[r]=d[r].choices||{}; dets[r]=d[r].details||{}; } }); }
+  else if(d.choices) recs.planned=d.choices;   // records from schema 0.1
+  cur = Object.keys(recs.executed).length ? "executed" : "planned"; sel=recs[cur]; setRecButtons();
+  openS=new Set(); openD=new Set(); [recs.planned,recs.executed].forEach(R=>Object.keys(R).forEach(k=>{ const si=VOCAB[mod].findIndex(st=>k.startsWith(st[0]+".")); if(si>=0){ openS.add(si); openD.add(k); } })); }
 function loadRecord(file){ if(!file) return; const r=new FileReader();
-  r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.schema!=="pipeline-map") throw 0; alt=d;
-    document.getElementById("msg").textContent = d.modality===mod ? "Comparing with "+file.name+" (dashed orange)." : "Record is "+d.modality+"; switch modality to compare.";
-    if(d.modality===mod) Object.keys(d.choices).forEach(k=>{ const si=VOCAB[mod].findIndex(st=>k.startsWith(st[0]+".")); if(si>=0){ openS.add(si); openD.add(k); } });
-    draw(); }catch(e){ document.getElementById("msg").textContent="Not a pipeline-map record."; } };
+  r.onload=()=>{ try{ applyRecord(JSON.parse(r.result)); document.getElementById("msg").textContent="Loaded "+file.name+"."; draw(); }
+    catch(e){ document.getElementById("msg").textContent="This file is not a pipeline-map record."; } };
   r.readAsText(file); }
-function clearAll(){ sel={}; alt=null; openS=new Set(); openD=new Set(); document.getElementById("lf").value=""; document.getElementById("msg").textContent=""; history.replaceState(null,"",location.pathname); draw(); }
+function hashOf(){ return "#r="+btoa(unescape(encodeURIComponent(JSON.stringify(record())))); }
+function copyLink(){ const url=location.origin+location.pathname+hashOf(); const m=document.getElementById("msg");
+  navigator.clipboard.writeText(url).then(()=>m.textContent="Link copied.",()=>{history.replaceState(null,"",url); m.textContent="The link is in the address bar.";}); }
+function readHash(){ const h=location.hash;
+  try{ if(h.startsWith("#r=")) { applyRecord(JSON.parse(decodeURIComponent(escape(atob(h.slice(3)))))); return; } }catch(e){}
+  if(!h.startsWith("#m=")) return;   // links from the first version
+  const q=new URLSearchParams(h.slice(1)); const m=q.get("m"); if(VOCAB[m]) mod=m; setModButtons();
+  (q.get("s")||"").split(",").filter(Boolean).forEach(p=>{ const i=p.lastIndexOf(":"); if(i>0) recs.planned[p.slice(0,i)]=p.slice(i+1); }); sel=recs.planned; }
+function clearAll(){ resetRecs(); openS=new Set(); openD=new Set(); document.getElementById("lf").value=""; document.getElementById("msg").textContent=""; history.replaceState(null,"",location.pathname); draw(); }
 
 readHash(); openSelected(); togglePanel(true); draw();
 </script>
