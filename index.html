@@ -89,6 +89,13 @@
   .methods:empty::before { content:"Declare a few decisions to generate the text."; color:var(--muted); font-family:Inter,sans-serif; font-size:14px; }
   #devbox .dev { margin-top:14px; border-left:4px solid var(--diff); background:#fdf3f2; border-radius:8px; padding:10px 14px; font-size:14px; line-height:1.5; }
   #devbox .dev b { color:var(--diff); }
+  details.imp { font-size:14px; line-height:1.5; color:var(--ink); }
+  details.imp summary { cursor:pointer; color:var(--path); font-weight:600; }
+  details.imp p { margin:8px 0; }
+  details.imp pre { font-size:11.5px; line-height:1.4; background:#1b2230; color:#e6e8ec; border-radius:8px; padding:10px 12px; overflow:auto; white-space:pre; }
+  code { font-size:12.5px; background:#f1f3f6; padding:1px 4px; border-radius:4px; }
+  .cite { font-size:13.5px; line-height:1.5; color:var(--ink); margin:0; }
+  .op .cnt { font-size:15px; fill:var(--muted); font-weight:600; }
   .ring { fill:none; stroke:#eceff3; stroke-width:1; }
   @media (max-width: 860px) {
     #stage { height:min(100vw, 75vh); flex:none; width:100%; }
@@ -116,7 +123,8 @@
     <div class="btns">
       <button class="b primary" onclick="exportJSON()">Export JSON</button>
       <button class="b" onclick="copyLink()">Copy link</button>
-      <label><input type="file" id="lf" accept="application/json" style="display:none" onchange="loadRecord(this.files[0])"><button class="b" onclick="document.getElementById('lf').click()">Load JSON</button></label>
+      <label><input type="file" id="lf" accept=".json,.yml,.yaml" style="display:none" onchange="importFile(this.files[0])"><button class="b" onclick="document.getElementById('lf').click()">Import</button></label>
+      <button class="b" onclick="openFigure()">Figure</button>
       <button class="b" onclick="clearAll()">Clear</button>
       <button class="b" onclick="expandAll()">Expand all</button>
       <button class="b" onclick="collapseAll()">Collapse</button>
@@ -128,17 +136,41 @@
     <h2>Methods text</h2>
     <div id="methods" class="methods"></div>
     <div class="btns"><button class="b" onclick="copyMethods()">Copy methods text</button></div>
+    <h2>Import from your pipeline</h2>
+    <details class="imp"><summary>What can be imported</summary>
+      <p>The Import button reads three kinds of file into the record you are editing.</p>
+      <p><b>A BIDS sidecar</b> such as <code>sub-01_task-x_eeg.json</code> or <code>_meg.json</code>. Sampling rate, reference and recording filters are read.</p>
+      <p><b>An OSL preprocessing config</b> (<code>.yml</code>). Filter cutoffs, Maxwell filtering, bad-channel detection, ICA and re-referencing are read.</p>
+      <p><b>A summary of an MNE-Python file</b>, written with these lines:</p>
+      <pre id="mnesnip">import json, mne
+raw = mne.io.read_raw_fif("your_preprocessed_raw.fif")
+i = raw.info
+json.dump({"source": "mne", "sfreq": i["sfreq"],
+  "highpass": i["highpass"], "lowpass": i["lowpass"],
+  "bads": i["bads"], "projs": [p["desc"] for p in i["projs"]],
+  "custom_ref_applied": int(i["custom_ref_applied"]),
+  "maxfilter": bool(i.get("proc_history"))},
+  open("pipeline_mne.json", "w"))</pre>
+      <p>Imported values are rounded to the nearest option on the map. The exact numbers go into the value fields.</p>
+    </details>
+    <h2>What others chose</h2>
+    <p class="hint">Load several records, for example the coded pipelines of a many-analyst study. Branch width then shows how often each option was chosen. Frequency describes practice and is not a recommendation.</p>
+    <div class="btns" style="margin-top:0"><label><input type="file" id="pf" accept=".json" multiple style="display:none" onchange="loadPopulation(this.files)"><button class="b" onclick="document.getElementById('pf').click()">Load records</button></label><button class="b" onclick="clearPopulation()">Remove</button></div>
+    <div id="popmsg" class="hint"></div>
+    <h2>Cite this tool</h2>
+    <p class="cite" id="cite"></p>
     <h2>Note</h2>
     <div id="note"><span style="color:var(--muted)">Point at a decision to read its note.</span></div>
   </aside>
 </main>
 <footer>
-  <span>Developed by Yu-Fang Yang · Beta version, contributions are welcome on <a href="https://github.com/ufangYang/pipeline-map">GitHub</a> · <a href="https://github.com/ufangYang/pipeline-map/blob/main/LICENSE">MIT License</a></span>
+  <span>Developed by Yu-Fang Yang · Version <span id="ver"></span>, beta; contributions are welcome on <a href="https://github.com/ufangYang/pipeline-map">GitHub</a> · <a href="https://github.com/ufangYang/pipeline-map/blob/main/LICENSE">MIT License</a></span>
   <span>Based on Bhagwat, Urchs, Poline and Yang (2025), <i>Imaging Neuroscience</i>, <a href="https://doi.org/10.1162/IMAG.a.21">doi 10.1162/IMAG.a.21</a>, ARTEM-IS (Styles et al., 2021) and COBIDAS MEEG (Pernet et al., 2020).</span>
 </footer>
 
 <script>
-const SCHEMA_VERSION = "0.2";
+const SCHEMA_VERSION = "0.3";
+const APP_VERSION = "0.3.0";
 
 // ---- vocabularies ---------------------------------------------------------
 // stage -> decisions -> options.  id strings are the record; labels can change, ids should not.
@@ -183,7 +215,8 @@ meg: [
   ["srate","Sampling rate",[["600","600 Hz"],["1000","1000 Hz"],["2000","≥ 2000 Hz"]],"Report the online filters together with the rate."],
   ["hpi","Head position",[["cont","Continuous HPI"],["block","Per block"],["none","Not tracked"]],"Head movement relative to the sensors changes the forward model."],
   ["empty","Empty-room recording",[["yes","Recorded"],["no","None"]],"Needed to estimate the noise covariance."],
-  ["digit","Head digitisation",[["polhemus","Polhemus"],["scan","3D scan"],["none","None"]],"Needed for coregistration with MRI."]
+  ["digit","Head digitisation",[["polhemus","Polhemus"],["scan","3D scan"],["none","None"]],"Needed for coregistration with MRI."],
+  ["array","Sensor array",[["dewar","Fixed dewar"],["rigid","Rigid OPM helmet"],["print","3D-printed helmet"],["flex","Flexible cap"]],"For OPM arrays, sensor positions and orientations relative to the head must be known; a flexible cap needs them to be measured."]
  ]],
  ["Curation", "Organising the raw data so that another person can find and read every file.", [
   ["fmt","Data format",[["bids","BIDS-MEG"],["vendor","Vendor format"]],"BIDS-MEG (Niso et al., 2018)."],
@@ -199,6 +232,8 @@ meg: [
   ["badch","Bad channels",[["visual","Visual"],["auto","Automated"],["none","None"]],""],
   ["corr","Artefact correction",[["ica","ICA"],["ssp","SSP"],["none","None"]],""],
   ["coreg","Coregistration",[["fid","Fiducials"],["icp","Head-shape fit"],["none","None"]],""],
+  ["fwd","Forward model",[["single","Single shell"],["bem","BEM"],["sphere","Sphere"],["none","None"]],"The head model sets how sensor data map to sources."],
+  ["noisecov","Noise covariance",[["empty","Empty room"],["base","Pre-stimulus baseline"],["ident","Identity"],["none","None"]],"Beamformers and minimum-norm estimates both depend on this choice."],
   ["source","Source model",[["lcmv","Beamformer (LCMV)"],["dics","Beamformer (DICS)"],["mne","MNE / dSPM"],["dipole","Dipole fit"],["sensor","Sensor level"]],"Source estimates depend on the forward model and the noise covariance."]
  ]],
  ["Annotation", "Describing the derived data so that it can be used without contacting the authors.", [
@@ -260,6 +295,7 @@ const stage = document.getElementById("stage");
 function setModButtons(){ ["eeg","meg","fmri"].forEach(k=>document.getElementById("m_"+k).className = mod===k?"on":""); }
 function setMod(m){ if(m===mod) return; mod=m; resetRecs(); openS=new Set(); openD=new Set();
   setModButtons();
+  if(pop.length){ const k=popRecs().length; document.getElementById("popmsg").textContent = k? `${k} records loaded for this modality.` : "The loaded records are for another modality."; }
   document.getElementById("msg").textContent = m==="eeg" ? "" : "The "+(m==="meg"?"MEG":"fMRI")+" vocabulary is a draft.";
   draw(); }
 function togglePanel(force){ const p=document.getElementById("panel"), t=document.getElementById("tab");
@@ -330,7 +366,9 @@ function draw(){
     const on = sel[k]===o.id, al = altSel && altSel[k]===o.id;
     const cls = on&&al ? "both" : on ? "on" : al ? "alt" : "";
     const d = N.decs.find(x=>x.s===o.s && x.id===o.d);
-    s += `<path class="lk ${cls}" stroke="${al&&!on?"var(--alt)":"url(#g"+o.s+")"}" d="${link(R.dec,d.ang,R.op,o.ang)}"/>`;
+    const pc = popShare(k,o.id);
+    const pw = pc===null ? "" : ` style="stroke-width:${(1.3+14*pc).toFixed(1)}px;opacity:${(0.25+0.6*Math.min(1,pc*1.5)).toFixed(2)}"`;
+    s += `<path class="lk ${cls}"${on||al?"":pw} stroke="${al&&!on?"var(--alt)":"url(#g"+o.s+")"}" d="${link(R.dec,d.ang,R.op,o.ang)}"/>`;
   });
   // links: stage -> decision, centre -> stage
   N.decs.forEach(d=>{
@@ -369,7 +407,7 @@ function draw(){
     const tx = left? -15 : 15;
     s += `<g class="op ${on?"on":""} ${al?"alt":""} ${diff?"diff":""}" style="--c:${tint(COL[o.s],0.1)}" onclick="pick('${esc(V[o.s][0])}','${o.d}','${o.id}')" onmouseenter="note(${o.s},'${o.d}')" transform="translate(${x},${y}) rotate(${rot})">`+
          `<title>${esc(V[o.s][0])} › ${esc(N.decs.find(x=>x.s===o.s&&x.id===o.d).lab)} › ${esc(o.lab)}</title><circle class="halo" r="13"/><circle r="6"/>`+
-         `<text x="${tx}" y="6" text-anchor="${left?"end":"start"}">${esc(o.lab)}</text></g>`; });
+         `<text x="${tx}" y="6" text-anchor="${left?"end":"start"}">${esc(o.lab)}${popCount(k,o.id)?`<tspan class="cnt"> ${popCount(k,o.id)}</tspan>`:""}</text></g>`; });
   s += `</g></svg>`;
   stage.innerHTML = s;
   fit();
@@ -453,13 +491,15 @@ const TPL = {
   "hp":"Data were high-pass filtered at {o}.", "hp.none":"No offline high-pass filter was applied.",
   "lp":"Data were low-pass filtered at {o}.", "lp.none":"No low-pass filter was applied.",
   "reref.keep":"Data were kept on the recording reference.", "reref.avg":"Data were re-referenced to the average reference.", "reref.mast":"Data were re-referenced to the linked mastoids.", "reref.rest":"Data were re-referenced with REST.",
-  "badch":"Bad channels were identified by {o}.", "badch.none":"No channels were rejected.", "badch.cleanraw":"Bad channels were identified with clean_rawdata.",
+  "badch":"Bad channels were identified by {o}.", "badch.none":"No channels were rejected.", "badch.cleanraw":"Bad channels were identified with clean_rawdata.", "badch.auto":"Bad channels were identified automatically.", "badch.visual":"Bad channels were identified by visual inspection.",
   "corr":"Artefacts were corrected with {o}.", "corr.none":"No artefact correction was applied.",
   "rej":"Trials were rejected by {o} criterion.", "rej.none":"No trials were rejected.", "rej.visual":"Trials were rejected by visual inspection.",
   "base":"Baseline correction used the {o} interval.", "base.none":"No baseline correction was applied.", "base.regress":"Baseline correction used regression.",
   "order.fixed":"The order of the preprocessing steps was declared in advance.", "order.none":"The order of the preprocessing steps was not declared.",
   "noise":"Environmental noise was reduced with {o}.", "noise.none":"No environmental noise reduction was applied.",
   "move.yes":"Head movement was compensated.", "move.no":"Head movement was not compensated.",
+  "array":"Sensors were mounted in a {o}.", "fwd":"The forward model used a {o} head model.", "fwd.bem":"The forward model used a boundary element model.", "fwd.none":"No forward model was computed.",
+  "noisecov":"The noise covariance was estimated from the {o}.", "noisecov.ident":"An identity noise covariance was used.", "noisecov.none":"No noise covariance was estimated.",
   "coreg":"Coregistration used {o}.", "coreg.none":"No coregistration was performed.", "source":"Sources were estimated with {o}.", "source.sensor":"Analyses were performed at the sensor level.",
   "pipe":"Preprocessing used {o}.", "stc.yes":"Slice timing correction was applied.", "stc.no":"Slice timing correction was not applied.",
   "sdc":"Susceptibility distortion was corrected with a {o} approach.", "sdc.none":"Susceptibility distortion was not corrected.",
@@ -472,13 +512,13 @@ const TPL = {
   "code":"Code is available in a {o}.", "code.request":"Code is available on request.", "code.none":"Code is not shared.",
   "reg":"The study was registered as a {o}.", "reg.none":"The study was not preregistered."
 };
-const LOWER = new Set(["Average","Mastoids","Visual","Kurtosis","Correlation","Amplitude","Peak-to-peak","Joint probability","Regression","Individual","Template","Fiducials","Head-shape fit","Container","Versioned scripts","Repository","Repository + DOI","Preregistration","Registered Report","Gel","Saline","Dry","Continuous HPI","Per block","Maintained","Free text","With vocabulary","Motion parameters","Field map","Fieldmap-less"]);
+const LOWER = new Set(["Fixed dewar","Rigid OPM helmet","3D-printed helmet","Flexible cap","Single shell","Sphere","Empty room","Pre-stimulus baseline","Average","Mastoids","Visual","Kurtosis","Correlation","Amplitude","Peak-to-peak","Joint probability","Regression","Individual","Template","Fiducials","Head-shape fit","Container","Versioned scripts","Repository","Repository + DOI","Preregistration","Registered Report","Gel","Saline","Dry","Continuous HPI","Per block","Maintained","Free text","With vocabulary","Motion parameters","Field map","Fieldmap-less"]);
 function sentence(si,did,oid,x){ const st=VOCAB[mod][si][0], d=VOCAB[mod][si][2].find(z=>z[0]===did); let o=optLabel(si,did,oid);
   let t = TPL[did+"."+oid]; if(t===undefined) t=TPL[did]; if(t===undefined) t=d[1]+": {o}.";
   if(!t) return "";
   const ol = LOWER.has(o) ? o.charAt(0).toLowerCase()+o.slice(1) : o;
   t = t.replace("{O}", o).replace("{o}", ol);
-  if(x) t = t.replace(/\.$/, " ("+x+").");
+  if(x && x.trim()!==o && x.trim()!==ol) t = t.replace(/\.$/, " ("+x+").");
   return t; }
 function methodsText(which){ const R=recs[which], D=dets[which]; const out=[];
   VOCAB[mod].forEach(([sname,,decs],si)=>{ const ss=[]; decs.forEach(([did])=>{ const k=key(sname,did); if(R[k]) { const t=sentence(si,did,R[k],D[k]); if(t) ss.push(t); } }); if(ss.length) out.push(ss.join(" ")); });
@@ -495,7 +535,7 @@ function copyMethods(){ const t=methodsText(cur); const m=document.getElementByI
   navigator.clipboard.writeText(t).then(()=>m.textContent="Methods text copied.",()=>m.textContent="Select the text and copy it by hand."); }
 
 // ---- files and links ----------------------------------------------------------
-function record(){ return { schema:"pipeline-map", schema_version:SCHEMA_VERSION, modality:mod,
+function record(){ return { schema:"pipeline-map", schema_version:SCHEMA_VERSION, app_version:APP_VERSION, modality:mod,
   generated:new Date().toISOString().slice(0,19).replace("T"," ")+" UTC",
   planned:{choices:recs.planned, details:dets.planned}, executed:{choices:recs.executed, details:dets.executed} }; }
 function download(name,text){ const b=new Blob([text],{type:"application/json"}); const u=URL.createObjectURL(b);
@@ -521,6 +561,110 @@ function readHash(){ const h=location.hash;
   (q.get("s")||"").split(",").filter(Boolean).forEach(p=>{ const i=p.lastIndexOf(":"); if(i>0) recs.planned[p.slice(0,i)]=p.slice(i+1); }); sel=recs.planned; }
 function clearAll(){ resetRecs(); openS=new Set(); openD=new Set(); document.getElementById("lf").value=""; document.getElementById("msg").textContent=""; history.replaceState(null,"",location.pathname); draw(); }
 
+// ---- population of records (what others chose) ---------------------------------
+let pop = [];   // list of {modality, choices}
+function popRecs(){ return pop.filter(r=>r.modality===mod); }
+function popCount(k,oid){ const P=popRecs(); if(!P.length) return null; return P.filter(r=>r.choices[k]===oid).length; }
+function popShare(k,oid){ const P=popRecs(); if(!P.length) return null; const n=P.filter(r=>r.choices[k]).length; return n? P.filter(r=>r.choices[k]===oid).length/n : 0; }
+function toRecList(d){ const out=[]; const one=x=>{ if(!x||x.schema!=="pipeline-map") return;
+    const ch = x.executed&&Object.keys(x.executed.choices||{}).length ? x.executed.choices : (x.planned? x.planned.choices : x.choices);
+    if(ch) out.push({modality:x.modality, choices:ch}); };
+  if(Array.isArray(d)) d.forEach(one); else if(d && Array.isArray(d.records)) d.records.forEach(one); else one(d); return out; }
+async function loadPopulation(files){ let n=0;
+  for(const f of files){ try{ const recsIn=toRecList(JSON.parse(await f.text())); pop.push(...recsIn); n+=recsIn.length; }catch(e){} }
+  const m=popRecs().length; document.getElementById("popmsg").textContent = m ? `${m} record${m>1?"s":""} loaded for ${({eeg:"EEG",meg:"MEG",fmri:"fMRI"})[mod]}. The number after each option is its count.` : "No records for this modality were found in the files.";
+  popRecs().forEach(r=>Object.keys(r.choices).forEach(k=>{ const si=VOCAB[mod].findIndex(st=>k.startsWith(st[0]+".")); if(si>=0){ openS.add(si); openD.add(k); } }));
+  draw(); }
+function clearPopulation(){ pop=[]; document.getElementById("pf").value=""; document.getElementById("popmsg").textContent=""; draw(); }
+
+// ---- import from BIDS sidecars, OSL configs and MNE summaries --------------------
+function stageIdx(name){ return VOCAB[mod].findIndex(st=>st[0]===name); }
+function numOf(label){ const m=String(label).match(/[\d.]+/); return m?parseFloat(m[0]):NaN; }
+function nearest(stName,did,val,log){ const si=stageIdx(stName); if(si<0) return null; const d=VOCAB[mod][si][2].find(x=>x[0]===did); if(!d) return null;
+  let best=null, bd=Infinity; d[2].forEach(([oid,lab])=>{ const v=numOf(lab); if(isNaN(v)) return; const dist = log? Math.abs(Math.log(v)-Math.log(val)) : Math.abs(v-val); if(dist<bd){bd=dist;best=oid;} }); return best; }
+function setChoice(stName,did,oid,detail,log){ const si=stageIdx(stName); if(si<0||!oid) return false; const d=VOCAB[mod][si][2].find(x=>x[0]===did); if(!d||!d[2].some(o=>o[0]===oid)) return false;
+  const k=key(stName,did); recs[cur][k]=oid; if(detail) dets[cur][k]=detail; log.push(`${d[1]}: ${optLabel(si,did,oid)}${detail?" ("+detail+")":""}`); return true; }
+function ensureMod(m){ if(mod!==m){ mod=m; setModButtons(); resetRecs(); } }
+function importBids(j,fname,log){
+  if(j.MEGChannelCount!==undefined || /_meg\.json$/i.test(fname)) ensureMod("meg"); else if(j.EEGReference!==undefined || /_eeg\.json$/i.test(fname)) ensureMod("eeg");
+  if(j.SamplingFrequency) setChoice("Acquisition","srate",nearest("Acquisition","srate",j.SamplingFrequency,true),j.SamplingFrequency+" Hz",log);
+  if(mod==="eeg" && j.EEGReference){ const r=String(j.EEGReference).toLowerCase();
+    const o = /fcz/.test(r)?"fcz": /\bcz\b/.test(r)?"cz": /mastoid|tp9|tp10|m1|m2/.test(r)?"mast": /nose/.test(r)?"nose": /cms|drl/.test(r)?"cms": null;
+    if(o) setChoice("Acquisition","ref_rec",o,j.EEGReference,log); else log.push("Reference at recording: "+j.EEGReference+" (no matching option)"); }
+  const hw = j.HardwareFilters || j.SoftwareFilters;
+  if(mod==="eeg" && hw && typeof hw==="object"){ const txt=JSON.stringify(hw); const m=txt.match(/(?:High|high)[^0-9]*([\d.]+)/);
+    if(m) setChoice("Acquisition","online",({0.01:"hp001",0.1:"hp01"})[parseFloat(m[1])] || (parseFloat(m[1])>=1?"hp1":parseFloat(m[1])<0.05?"hp001":"hp01"),"high-pass "+m[1]+" Hz",log); }
+  if(mod==="meg"){ if(j.ContinuousHeadLocalization===true) setChoice("Acquisition","hpi","cont","",log);
+    if(j.AssociatedEmptyRoom) setChoice("Acquisition","empty","yes",String(j.AssociatedEmptyRoom),log);
+    if(j.DigitizedHeadPoints===true) setChoice("Acquisition","digit","polhemus","",log); }
+  setChoice("Curation","fmt","bids","",log); }
+function importMne(j,log){
+  if(j.maxfilter || (j.projs||[]).some(p=>/meg|grad|mag/i.test(p))) ensureMod(mod==="fmri"?"meg":mod);
+  if(j.sfreq) setChoice("Acquisition","srate",nearest("Acquisition","srate",j.sfreq,true),j.sfreq+" Hz",log);
+  if(j.highpass>0) setChoice("Processing","hp",nearest("Processing","hp",j.highpass,true),j.highpass+" Hz",log); else if(j.highpass===0) setChoice("Processing","hp","none","",log);
+  if(j.lowpass && j.sfreq && j.lowpass < j.sfreq/2 - 1) setChoice("Processing","lp",nearest("Processing","lp",j.lowpass,true),j.lowpass+" Hz",log);
+  if(mod==="eeg"){ if((j.projs||[]).some(p=>/average eeg reference/i.test(p)) || j.custom_ref_applied) setChoice("Processing","reref",(j.projs||[]).some(p=>/average/i.test(p))?"avg":"mast",j.custom_ref_applied?"custom reference applied":"average reference projector",log); }
+  if((j.projs||[]).some(p=>/ecg|eog/i.test(p))) setChoice("Processing","corr","ssp",(j.projs||[]).filter(p=>/ecg|eog/i.test(p)).length+" ECG/EOG projectors",log);
+  if(mod==="meg" && j.maxfilter) setChoice("Processing","noise","sss","processing history present",log);
+  if(Array.isArray(j.bads)) log.push(`Bad channels: ${j.bads.length} marked in the file (method not recorded)`); }
+function importOsl(t,log){
+  if(/maxwell|maxfilter|meg/i.test(t)) ensureMod("meg");
+  const l=t.match(/l_freq\s*:\s*([\d.]+)/), h=t.match(/h_freq\s*:\s*([\d.]+)/);
+  if(l) setChoice("Processing","hp",nearest("Processing","hp",parseFloat(l[1]),true),l[1]+" Hz (OSL filter)",log);
+  if(h) setChoice("Processing","lp",nearest("Processing","lp",parseFloat(h[1]),true),h[1]+" Hz (OSL filter)",log);
+  if(mod==="meg" && /maxwell/i.test(t)) setChoice("Processing","noise",/st_duration/i.test(t)?"tsss":"sss",/st_duration\s*:\s*([\d.]+)/i.test(t)?"st_duration "+t.match(/st_duration\s*:\s*([\d.]+)/i)[1]+" s":"",log);
+  if(/detect_badchannels|find_bad_channels|bad_channels/i.test(t)) setChoice("Processing","badch",mod==="meg"?"auto":"corr","automated detection in OSL",log);
+  if(/ica_raw|ica_autoreject|\bica\b/i.test(t)){ const n=t.match(/n_components\s*:\s*([\d.]+)/); setChoice("Processing","corr","ica",n?n[1]+" components":"",log); }
+  if(/set_eeg_reference/i.test(t) && mod==="eeg") setChoice("Processing","reref",/average/i.test(t)?"avg":"keep","",log);
+  if(/bad_segments|detect_badsegments/i.test(t)) log.push("Bad segments: automated detection in OSL (not mapped to an option)"); }
+async function importFile(file){ if(!file) return; const m=document.getElementById("msg"); const t=await file.text(); const log=[];
+  try{
+    if(/\.ya?ml$/i.test(file.name)) importOsl(t,log);
+    else { const j=JSON.parse(t);
+      if(j.schema==="pipeline-map"){ applyRecord(j); m.textContent="Loaded "+file.name+"."; draw(); return; }
+      if(j.source==="mne" || j.sfreq!==undefined) importMne(j,log); else importBids(j,file.name,log); }
+  }catch(e){ m.textContent="This file could not be read."; return; }
+  sel=recs[cur]; openS=new Set(); openD=new Set(); openSelected(); draw();
+  m.innerHTML = log.length ? `Imported into the ${cur} record from ${esc(file.name)}:<br>`+log.map(esc).join("<br>") : "Nothing in this file matched the map.";
+  document.getElementById("lf").value=""; }
+
+// ---- figure for a poster or a supplement --------------------------------------
+function svgStyle(){ let css=""; for(const sh of document.styleSheets){ let rules; try{ rules=sh.cssRules; }catch(e){ continue; }
+    for(const r of rules){ if(r.selectorText && /(\.lk|\.st\b|\.dc|\.op|\.ring|#stage text)/.test(r.selectorText)) css += r.cssText.replace(/#stage text/g,"text")+"\n"; } }
+  return css + `text{font-family:Inter,Helvetica,Arial,sans-serif} :root{--ink:#1b2230;--bg:#ffffff;--alt:#d9842b;--diff:#c0392b;--path:#1f4e79;--muted:#6b7482}`; }
+function figureSvg(){ const svg=stage.querySelector("svg").cloneNode(true); svg.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  const st=document.createElementNS("http://www.w3.org/2000/svg","style"); st.textContent=svgStyle(); svg.insertBefore(st, svg.firstChild);
+  svg.removeAttribute("style"); svg.setAttribute("width","900"); svg.setAttribute("height","900"); return new XMLSerializer().serializeToString(svg); }
+function openFigure(){ const keepS=new Set(openS), keepD=new Set(openD);
+  openS=new Set(); openD=new Set(); [recs.planned,recs.executed].forEach(Rr=>Object.keys(Rr).forEach(k=>{ const si=VOCAB[mod].findIndex(st=>k.startsWith(st[0]+".")); if(si>=0){ openS.add(si); openD.add(k); } }));
+  draw(); const svg=figureSvg(); openS=keepS; openD=keepD; draw(); const both=Object.keys(recs.planned).length && Object.keys(recs.executed).length;
+  let rows=""; VOCAB[mod].forEach(([sname,,decs],si)=>{ decs.forEach(([did,dlab])=>{ const k=key(sname,did); const P=recs.planned[k], E=recs.executed[k]; if(!P&&!E) return;
+    rows+=`<tr><td style="color:${COL[si]}">${esc(sname)}</td><td>${esc(dlab)}</td><td>${P?esc(optLabel(si,did,P))+(dets.planned[k]&&dets.planned[k]!==optLabel(si,did,P)?"<br><small>"+esc(dets.planned[k])+"</small>":""):""}</td>${both||Object.keys(recs.executed).length?`<td class="${P&&E&&P!==E?"dev":""}">${E?esc(optLabel(si,did,E))+(dets.executed[k]&&dets.executed[k]!==optLabel(si,did,E)?"<br><small>"+esc(dets.executed[k])+"</small>":""):""}</td>`:""}</tr>`; }); });
+  const hasE=Object.keys(recs.executed).length;
+  const w=window.open("","_blank"); if(!w){ document.getElementById("msg").textContent="Allow pop-ups to open the figure."; return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Pipeline figure</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
+<style>body{font-family:Inter,Helvetica,sans-serif;color:#1b2230;margin:32px;} h1{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:24px;margin:0 0 4px}
+.sub{color:#6b7482;font-size:13px;margin:0 0 18px} .wrap{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:start}
+svg{width:100%;height:auto} table{border-collapse:collapse;font-size:13px;width:100%} th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7482;border-bottom:1px solid #d9dde3;padding:6px 8px}
+td{padding:6px 8px;border-bottom:1px solid #eef0f3;vertical-align:top} td small{color:#6b7482} td.dev{color:#c0392b;font-weight:600}
+.methods{font-family:"Source Serif 4",Georgia,serif;font-size:14px;line-height:1.55;margin-top:18px;white-space:pre-wrap}
+.foot{color:#6b7482;font-size:11.5px;margin-top:18px} .bar{margin-bottom:18px} .bar button{font:inherit;font-size:13px;padding:7px 12px;border:1px solid #cfd4da;border-radius:7px;background:#fff;cursor:pointer;margin-right:6px}
+@media print{.bar{display:none} body{margin:12mm}}</style></head><body>
+<div class="bar"><button onclick="print()">Print or save as PDF</button><button id="dl">Download SVG</button></div>
+<h1>${({eeg:"EEG / ERP",meg:"MEG",fmri:"fMRI"})[mod]} pipeline</h1><p class="sub">${hasE?"Planned and executed pipeline; differences in red.":"Planned pipeline."} Neuroimaging pipeline map v${APP_VERSION}, ${new Date().toISOString().slice(0,10)}</p>
+<div class="wrap"><div>${svg}</div><div><table><tr><th>Stage</th><th>Decision</th><th>Planned</th>${hasE?"<th>Executed</th>":""}</tr>${rows}</table>
+<div class="methods">${esc(methodsText(hasE?"executed":"planned"))}</div></div></div>
+<p class="foot">${esc(citeText())}</p>
+<script>document.getElementById("dl").onclick=()=>{const b=new Blob([${JSON.stringify(svg)}],{type:"image/svg+xml"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="pipeline_${mod}.svg";a.click();};<\/script>
+</body></html>`); w.document.close(); }
+
+// ---- citation -------------------------------------------------------------------
+const DOI = "";   // fill in after the first Zenodo release
+function citeText(){ return `Yang, Y.-F. (${new Date().getFullYear()}). Neuroimaging pipeline map (Version ${APP_VERSION}) [Software]. ${DOI?"https://doi.org/"+DOI:"https://github.com/ufangYang/pipeline-map"}`; }
+
+document.getElementById("ver").textContent = APP_VERSION;
+document.getElementById("cite").textContent = citeText();
 readHash(); openSelected(); togglePanel(true); draw();
 </script>
 </body>
